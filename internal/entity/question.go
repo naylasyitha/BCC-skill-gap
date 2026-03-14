@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Question struct {
@@ -17,7 +18,7 @@ type Question struct {
 	Explanation     string `gorm:"type:text"`
 }
 
-func (q *Question) BeforeCreate() error {
+func (q *Question) BeforeCreate(tx *gorm.DB) error {
 	if q.ID == uuid.Nil {
 		q.ID = uuid.New()
 	}

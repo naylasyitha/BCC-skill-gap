@@ -30,6 +30,7 @@ func ConnectDB() *gorm.DB {
 		&entity.User{},
 		&entity.Career{},
 		&entity.Skill{},
+		&entity.CareerSkill{},
 		&entity.UserCareerSession{},
 		&entity.SelfAssessmentSkill{},
 		&entity.Question{},

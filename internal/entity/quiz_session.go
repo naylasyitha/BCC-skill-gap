@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type QuizSession struct {
@@ -20,7 +21,7 @@ type QuizSession struct {
 	CompletedAt         *time.Time
 }
 
-func (q *QuizSession) BeforeCreate() error {
+func (q *QuizSession) BeforeCreate(tx *gorm.DB) error {
 	if q.ID == uuid.Nil {
 		q.ID = uuid.New()
 	}

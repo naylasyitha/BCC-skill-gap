@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type UserCareerSession struct {
@@ -17,7 +18,7 @@ type UserCareerSession struct {
 	CompletedAt *time.Time // pakai pointer agar dapat null
 }
 
-func (us *UserCareerSession) BeforeCreate() error {
+func (us *UserCareerSession) BeforeCreate(tx *gorm.DB) error {
 	if us.ID == uuid.Nil {
 		us.ID = uuid.New()
 	}

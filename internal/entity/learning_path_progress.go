@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type LearningPathProgress struct {
@@ -18,7 +19,7 @@ type LearningPathProgress struct {
 	CompletedAt         *time.Time
 }
 
-func (l *LearningPathProgress) BeforeCreate() error {
+func (l *LearningPathProgress) BeforeCreate(tx *gorm.DB) error {
 	if l.ID == uuid.Nil {
 		l.ID = uuid.New()
 	}

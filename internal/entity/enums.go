@@ -2,7 +2,6 @@ package entity
 
 type EduLevel string
 type Role string
-type Subscription string
 type LevelEnum string
 type StatusEnum string
 
@@ -15,9 +14,6 @@ const (
 
 	RoleUser  Role = "user"
 	RoleAdmin Role = "admin"
-
-	SubsFree    Subscription = "free"
-	SubsPremium Subscription = "premium"
 
 	LevelBeginner     LevelEnum = "beginner"
 	LevelIntermediate LevelEnum = "intermediate"

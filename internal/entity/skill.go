@@ -2,19 +2,16 @@ package entity
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Skill struct {
-	ID            uuid.UUID `gorm:"primaryKey;type:uuid"`
-	CareerId      uuid.UUID `gorm:"type:uuid;not null"`
-	Career        Career
-	Name          string    `gorm:"type:varchar(255);not null"`
-	Desc          string    `gorm:"type:text"`
-	Priority      int       `gorm:"not null"`
-	RequiredLevel LevelEnum `gorm:"type:varchar(50);not null"`
+	ID   uuid.UUID `gorm:"primaryKey;type:uuid"`
+	Name string    `gorm:"type:varchar(255);not null"`
+	Desc string    `gorm:"type:text"`
 }
 
-func (s *Skill) BeforeCreate() error {
+func (s *Skill) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
 	}

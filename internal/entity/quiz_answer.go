@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type QuizAnswer struct {
@@ -14,7 +15,7 @@ type QuizAnswer struct {
 	IsCorrect     bool   `gorm:"default:false"`
 }
 
-func (q *QuizAnswer) BeforeCreate() error {
+func (q *QuizAnswer) BeforeCreate(tx *gorm.DB) error {
 	if q.ID == uuid.Nil {
 		q.ID = uuid.New()
 	}

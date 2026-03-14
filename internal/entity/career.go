@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Career struct {
@@ -10,7 +11,7 @@ type Career struct {
 	Desc string    `gorm:"type:text"`
 }
 
-func (c *Career) BeforeCreate() error {
+func (c *Career) BeforeCreate(tx *gorm.DB) error {
 	if c.ID == uuid.Nil {
 		c.ID = uuid.New()
 	}

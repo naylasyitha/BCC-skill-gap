@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type Material struct {
@@ -14,7 +15,7 @@ type Material struct {
 	OrderNumber int    `gorm:"not null"`
 }
 
-func (m *Material) BeforeCreate() error {
+func (m *Material) BeforeCreate(tx *gorm.DB) error {
 	if m.ID == uuid.Nil {
 		m.ID = uuid.New()
 	}

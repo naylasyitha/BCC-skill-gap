@@ -2,6 +2,7 @@ package entity
 
 import (
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type SelfAssessmentSkill struct {
@@ -13,7 +14,7 @@ type SelfAssessmentSkill struct {
 	UserLevel           LevelEnum `gorm:"type:varchar(50)"`
 }
 
-func (s *SelfAssessmentSkill) BeforeCreate() error {
+func (s *SelfAssessmentSkill) BeforeCreate(tx *gorm.DB) error {
 	if s.ID == uuid.Nil {
 		s.ID = uuid.New()
 	}
