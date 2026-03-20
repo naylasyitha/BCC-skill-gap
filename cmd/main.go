@@ -18,10 +18,22 @@ func main() {
 	}
 
 	db := database.ConnectDB()
+
 	authRepo := repository.NewAuthRepository(db)
+	careerRepo := repository.NewCareerRepository(db)
+	skillRepo := repository.NewSkillRepository(db)
+	careerSkillRepo := repository.NewCareerSkillRepository(db)
+
 	authUsecase := usecase.NewAuthUsecase(authRepo)
+	careerUsecase := usecase.NewCareerUsecase(careerRepo)
+	skillUsecase := usecase.NewSkillUsecase(skillRepo, careerSkillRepo)
+
 	authHandler := handler.NewAuthHandler(authUsecase)
-	r := router.NewRouter(authHandler)
+	careerHandler := handler.NewCareerHandler(careerUsecase)
+	skillHandler := handler.NewSkillHandler(skillUsecase)
+
+	r := router.NewRouter(authHandler, careerHandler, skillHandler)
+
 	app := r.SetupRouter()
 
 	log.Println("Server berjalan di port 8000")

@@ -7,8 +7,6 @@ import (
 	"project-bcc/internal/entity"
 	"project-bcc/pkg/bcrypt"
 	"project-bcc/pkg/jwt"
-
-	"github.com/google/uuid"
 )
 
 type AuthUsecase struct {
@@ -38,7 +36,6 @@ func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) (*
 	userRole := entity.RoleUser
 
 	user := &entity.User{
-		ID:       uuid.New(),
 		FullName: req.Fullname,
 		Username: req.Username,
 		Email:    req.Email,

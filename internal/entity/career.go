@@ -6,9 +6,10 @@ import (
 )
 
 type Career struct {
-	ID   uuid.UUID `gorm:"primaryKey;type:uuid"`
-	Name string    `gorm:"type:varchar(255);not null"`
-	Desc string    `gorm:"type:text"`
+	ID           uuid.UUID     `gorm:"primaryKey;type:uuid"`
+	Name         string        `gorm:"type:varchar(255);not null"`
+	Desc         string        `gorm:"type:text"`
+	CareerSkills []CareerSkill `gorm:"foreignKey:CareerID"`
 }
 
 func (c *Career) BeforeCreate(tx *gorm.DB) error {

@@ -1,0 +1,121 @@
+package handler
+
+import (
+	"net/http"
+	"project-bcc/dto"
+	"project-bcc/internal/usecase"
+
+	"github.com/gin-gonic/gin"
+)
+
+type CareerHandler struct {
+	careerUsecase *usecase.CareerUsecase
+}
+
+func NewCareerHandler(car *usecase.CareerUsecase) *CareerHandler {
+	return &CareerHandler{careerUsecase: car}
+}
+
+func (ch *CareerHandler) GetAllCareer(c *gin.Context) {
+	result, err := ch.careerUsecase.GetAllCareer(c.Request.Context())
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Daftar Karir",
+		"data":    result,
+	})
+}
+
+func (ch *CareerHandler) GetCareerById(c *gin.Context) {
+	result, err := ch.careerUsecase.GetCareerById(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Detail Karir",
+		"data":    result,
+	})
+}
+
+func (ch *CareerHandler) CreateCareer(c *gin.Context) {
+	var req dto.CareerCreateRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	result, err := ch.careerUsecase.CreateCareer(c.Request.Context(), req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusCreated, gin.H{
+		"success": true,
+		"message": "Karir berhasil dibuat",
+		"data":    result,
+	})
+}
+
+func (ch *CareerHandler) UpdateCareer(c *gin.Context) {
+	var req dto.CareerEditRequest
+	err := c.ShouldBindJSON(&req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	result, err := ch.careerUsecase.UpdateCareer(c.Request.Context(), c.Param("id"), req)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Karir berhasil diubah",
+		"data":    result,
+	})
+}
+
+func (ch *CareerHandler) DeleteCareer(c *gin.Context) {
+	err := ch.careerUsecase.DeleteCareer(c.Request.Context(), c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Karir berhasil dihapus",
+	})
+}
