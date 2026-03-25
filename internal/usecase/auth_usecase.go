@@ -84,6 +84,7 @@ func (au *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest) (*dto.Au
 		return nil, errors.New("gagal generate refresh token")
 	}
 
+	fmt.Println("ACCESS TOKEN: ", accessToken)
 	user.RefreshToken = refreshToken
 	err = au.authRepo.Update(ctx, user)
 	if err != nil {

@@ -77,10 +77,11 @@ func (ch *CareerHandler) CreateCareer(c *gin.Context) {
 	})
 }
 
-func (ch *CareerHandler) UpdateCareer(c *gin.Context) {
+func (h *CareerHandler) UpdateCareer(c *gin.Context) {
+	careerID := c.Param("id")
+
 	var req dto.CareerEditRequest
-	err := c.ShouldBindJSON(&req)
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -88,7 +89,7 @@ func (ch *CareerHandler) UpdateCareer(c *gin.Context) {
 		return
 	}
 
-	result, err := ch.careerUsecase.UpdateCareer(c.Request.Context(), c.Param("id"), req)
+	result, err := h.careerUsecase.UpdateCareer(c.Request.Context(), careerID, req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

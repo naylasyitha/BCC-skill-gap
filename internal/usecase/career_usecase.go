@@ -11,10 +11,17 @@ import (
 
 type CareerUsecase struct {
 	careerRepository CareerRepository
+	skillRepository  SkillRepository
 }
 
-func NewCareerUsecase(repo CareerRepository) *CareerUsecase {
-	return &CareerUsecase{careerRepository: repo}
+func NewCareerUsecase(
+	repo CareerRepository,
+	sRepo SkillRepository,
+) *CareerUsecase {
+	return &CareerUsecase{
+		careerRepository: repo,
+		skillRepository:  sRepo,
+	}
 }
 
 func (cu *CareerUsecase) GetAllCareer(ctx context.Context) ([]dto.CareerResponse, error) {
@@ -58,18 +65,24 @@ func (cu *CareerUsecase) GetCareerById(ctx context.Context, id string) (*dto.Car
 	}, nil
 }
 
-func (cu *CareerUsecase) CreateCareer(ctx context.Context, req dto.CareerCreateRequest) (*dto.CareerResponse, error) {
+func (cu *CareerUsecase) CreateCareer(ctx context.Context, req dto.CareerCreateRequest) (*dto.CareerSkillResponse, error) {
 	career := &entity.Career{
 		Name: req.Name,
 		Desc: req.Desc,
 	}
 
 	var careerSkills []entity.CareerSkill
+	var skillResponses []dto.SkillsResponse
 
-	for _, reqSkill := range req.Skill {
+	for _, reqSkill := range req.Skills {
 		skillUUID, err := uuid.Parse(reqSkill.SkillID)
 		if err != nil {
-			return nil, errors.New("SKill ID tidak Valid")
+			return nil, errors.New("Skill ID tidak Valid")
+		}
+
+		skillData, err := cu.skillRepository.FindById(ctx, reqSkill.SkillID)
+		if err != nil {
+			return nil, errors.New("Skill tidak ditemukan")
 		}
 
 		careerSkills = append(careerSkills, entity.CareerSkill{
@@ -78,6 +91,13 @@ func (cu *CareerUsecase) CreateCareer(ctx context.Context, req dto.CareerCreateR
 			RequiredLevel: entity.LevelEnum(reqSkill.RequiredLevel),
 		})
 
+		skillResponses = append(skillResponses, dto.SkillsResponse{
+			ID:            skillData.ID.String(),
+			Name:          skillData.Name,
+			Desc:          skillData.Desc,
+			Priority:      reqSkill.Priority,
+			RequiredLevel: reqSkill.RequiredLevel,
+		})
 	}
 
 	err := cu.careerRepository.CreateCareerSkill(ctx, career, careerSkills)
@@ -85,14 +105,15 @@ func (cu *CareerUsecase) CreateCareer(ctx context.Context, req dto.CareerCreateR
 		return nil, err
 	}
 
-	return &dto.CareerResponse{
-		ID:   career.ID.String(),
-		Name: career.Name,
-		Desc: career.Desc,
+	return &dto.CareerSkillResponse{
+		ID:     career.ID.String(),
+		Name:   career.Name,
+		Desc:   career.Desc,
+		Skills: skillResponses,
 	}, nil
 }
 
-func (cu *CareerUsecase) UpdateCareer(ctx context.Context, id string, req dto.CareerEditRequest) (*dto.CareerResponse, error) {
+func (cu *CareerUsecase) UpdateCareer(ctx context.Context, id string, req dto.CareerEditRequest) (*dto.CareerSkillResponse, error) {
 	career, err := cu.careerRepository.FindById(ctx, id)
 	if err != nil {
 		return nil, err
@@ -106,15 +127,48 @@ func (cu *CareerUsecase) UpdateCareer(ctx context.Context, id string, req dto.Ca
 		career.Desc = req.Desc
 	}
 
-	err = cu.careerRepository.Update(ctx, career)
+	var newSkills []entity.CareerSkill
+	updateSkills := req.Skills != nil
+
+	if updateSkills {
+		for _, s := range req.Skills {
+			newSkills = append(newSkills, entity.CareerSkill{
+				SkillID:       uuid.MustParse(s.SkillID),
+				Priority:      s.Priority,
+				RequiredLevel: entity.LevelEnum(s.RequiredLevel),
+			})
+		}
+	}
+
+	err = cu.careerRepository.UpdateCareerWithSkills(ctx, career, newSkills, updateSkills)
 	if err != nil {
 		return nil, err
 	}
 
-	return &dto.CareerResponse{
-		ID:   career.ID.String(),
-		Name: career.Name,
-		Desc: career.Desc,
+	var skillResponses []dto.SkillsResponse
+	if updateSkills {
+		for _, s := range req.Skills {
+			skillDetail, err := cu.skillRepository.FindById(ctx, s.SkillID)
+
+			if err == nil {
+				skillResponses = append(skillResponses, dto.SkillsResponse{
+					ID:            s.SkillID,
+					Name:          skillDetail.Name,
+					Desc:          skillDetail.Desc,
+					Priority:      s.Priority,
+					RequiredLevel: s.RequiredLevel,
+				})
+			}
+		}
+	} else {
+
+	}
+
+	return &dto.CareerSkillResponse{
+		ID:     career.ID.String(),
+		Name:   career.Name,
+		Desc:   career.Desc,
+		Skills: skillResponses,
 	}, nil
 }
 

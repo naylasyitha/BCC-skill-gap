@@ -18,7 +18,7 @@ func NewCareerRepository(db *gorm.DB) usecase.CareerRepository {
 
 // Delete implements [usecase.CareerRepository].
 func (c *careerRepository) Delete(ctx context.Context, id string) error {
-	return c.db.WithContext(ctx).Delete(&entity.Career{}, id).Error
+	return c.db.WithContext(ctx).Where("id = ?", id).Delete(&entity.Career{}).Error
 }
 
 // FindAll implements [usecase.CareerRepository].
@@ -69,6 +69,41 @@ func (c *careerRepository) CreateCareerSkill(ctx context.Context, career *entity
 	if err := tx.Create(&careerSkill).Error; err != nil {
 		tx.Rollback()
 		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *careerRepository) UpdateCareerWithSkills(ctx context.Context, career *entity.Career, newSkills []entity.CareerSkill, updateSkills bool) error {
+	tx := c.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if err := tx.Save(career).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if updateSkills {
+		if err := tx.Where("career_id = ?", career.ID).Delete(&entity.CareerSkill{}).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+
+		if len(newSkills) > 0 {
+			for i := range newSkills {
+				newSkills[i].CareerID = career.ID
+			}
+
+			if err := tx.Create(&newSkills).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
+		}
 	}
 
 	if err := tx.Commit().Error; err != nil {

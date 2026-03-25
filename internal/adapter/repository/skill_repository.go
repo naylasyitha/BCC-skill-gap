@@ -18,7 +18,7 @@ func NewSkillRepository(db *gorm.DB) usecase.SkillRepository {
 
 // Delete implements [usecase.SkillRepository].
 func (s *skillRepository) Delete(ctx context.Context, id string) error {
-	return s.db.WithContext(ctx).Delete(&entity.Skill{}, id).Error
+	return s.db.WithContext(ctx).Where("id = ?", id).Delete(&entity.Skill{}).Error
 }
 
 // FindAll implements [usecase.SkillRepository].

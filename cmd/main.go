@@ -27,7 +27,7 @@ func main() {
 	quizRepo := repository.NewQuizRepository(db)
 
 	authUsecase := usecase.NewAuthUsecase(authRepo)
-	careerUsecase := usecase.NewCareerUsecase(careerRepo)
+	careerUsecase := usecase.NewCareerUsecase(careerRepo, skillRepo)
 	skillUsecase := usecase.NewSkillUsecase(skillRepo, careerSkillRepo)
 	selfAssessmentUsecase := usecase.NewSelfAssessmentUsecase(selfAssesmentRepo)
 	quizUsecase := usecase.NewQuizUsecase(quizRepo)

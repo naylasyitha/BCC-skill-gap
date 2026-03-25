@@ -1,9 +1,9 @@
 package dto
 
 type CareerCreateRequest struct {
-	Name  string               `json:"name" binding:"required"`
-	Desc  string               `json:"desc" binding:"required"`
-	Skill []CareerSkillRequest `json:"skills" binding:"required,min=1,dive"`
+	Name   string               `json:"name" binding:"required"`
+	Desc   string               `json:"desc" binding:"required"`
+	Skills []CareerSkillRequest `json:"skills" binding:"required,min=1,dive"`
 }
 
 type CareerSkillRequest struct {
@@ -34,6 +34,7 @@ type CareerSkillResponse struct {
 }
 
 type CareerEditRequest struct {
-	Name string `json:"name"`
-	Desc string `json:"desc"`
+	Name   string               `json:"name"`
+	Desc   string               `json:"desc"`
+	Skills []CareerSkillRequest `json:"skills"`
 }

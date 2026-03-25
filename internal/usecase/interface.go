@@ -19,6 +19,7 @@ type CareerRepository interface {
 	Delete(ctx context.Context, id string) error
 	Save(ctx context.Context, career *entity.Career) error
 	CreateCareerSkill(ctx context.Context, career *entity.Career, careerSkill []entity.CareerSkill) error
+	UpdateCareerWithSkills(ctx context.Context, career *entity.Career, newSkills []entity.CareerSkill, updateSkills bool) error
 }
 
 type SkillRepository interface {
