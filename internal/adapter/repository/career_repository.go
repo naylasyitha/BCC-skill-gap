@@ -50,3 +50,29 @@ func (c *careerRepository) Save(ctx context.Context, career *entity.Career) erro
 func (c *careerRepository) Update(ctx context.Context, career *entity.Career) error {
 	return c.db.WithContext(ctx).Save(career).Error
 }
+
+func (c *careerRepository) CreateCareerSkill(ctx context.Context, career *entity.Career, careerSkill []entity.CareerSkill) error {
+	tx := c.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return tx.Error
+	}
+
+	if err := tx.Create(career).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	for i := range careerSkill {
+		careerSkill[i].CareerID = career.ID
+	}
+
+	if err := tx.Create(&careerSkill).Error; err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
+	return nil
+}

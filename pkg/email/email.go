@@ -24,13 +24,18 @@ func send(toEmail, subject, html string) error {
 	client := resend.NewClient(apiKey)
 
 	params := &resend.SendEmailRequest{
-		From:    "no-reply@yourdomain.com",
+		From:    "norepy@undev.fun",
 		To:      []string{toEmail},
 		Subject: subject,
 		Html:    html,
 	}
 
-	_, err := client.Emails.Send(params)
+	resp, err := client.Emails.Send(params)
+	if err != nil {
+		fmt.Println("RESEND ERROR: ", err)
+		return err
+	}
+	fmt.Println("RESEND SUCCESS: ", resp.Id)
 	return err
 }
 

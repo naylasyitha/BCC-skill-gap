@@ -19,12 +19,12 @@ type VerifyEmailRequest struct {
 
 type ResendVerificationRequest struct {
 	Email       string `json:"email" binding:"required,email"`
-	CallbackUrl string `json:"callbackUrl" binding:"required"`
+	CallbackUrl string `json:"callbackUrl"`
 }
 
 type ForgotPasswordRequest struct {
 	Email       string `json:"email" binding:"required,email"`
-	CallbackUrl string `json:"callbackUrl" binding:"required"`
+	CallbackUrl string `json:"callbackUrl"`
 }
 
 type ResetPasswordRequest struct {

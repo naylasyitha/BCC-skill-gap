@@ -18,6 +18,7 @@ type CareerRepository interface {
 	Update(ctx context.Context, career *entity.Career) error
 	Delete(ctx context.Context, id string) error
 	Save(ctx context.Context, career *entity.Career) error
+	CreateCareerSkill(ctx context.Context, career *entity.Career, careerSkill []entity.CareerSkill) error
 }
 
 type SkillRepository interface {
@@ -33,4 +34,14 @@ type CareerSkillRepository interface {
 	Update(ctx context.Context, skill *entity.CareerSkill) error
 	Delete(ctx context.Context, id string) error
 	Save(ctx context.Context, skill *entity.CareerSkill) error
+}
+
+type SelfAssessmentRepository interface {
+	CreateAssessmentSession(ctx context.Context, session *entity.UserCareerSession, skills []entity.SelfAssessmentSkill) error
+}
+
+type QuizRepository interface {
+	GetSelfAssessmentSkillsBySession(ctx context.Context, sessionID string) ([]entity.SelfAssessmentSkill, error)
+	GetRandomQuestionBySkillAndLevel(ctx context.Context, skillID string, level entity.LevelEnum) (*entity.Question, error)
+	CreateQuizTransaction(ctx context.Context, quizSession *entity.QuizSession, quizAnswers []entity.QuizAnswer) error
 }

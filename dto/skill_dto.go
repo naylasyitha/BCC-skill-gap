@@ -24,7 +24,7 @@ type CareerSkillCreateRequest struct {
 }
 
 type CareerSkillAsignResponse struct {
-	ID            string `jsoon:"id"`
+	ID            string `json:"id"`
 	CareerID      string `json:"career_id"`
 	SkillID       string `json:"skill_id"`
 	Priority      int    `json:"priority"`

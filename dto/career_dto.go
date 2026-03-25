@@ -1,8 +1,15 @@
 package dto
 
 type CareerCreateRequest struct {
-	Name string `json:"name" binding:"required"`
-	Desc string `json:"desc" binding:"required"`
+	Name  string               `json:"name" binding:"required"`
+	Desc  string               `json:"desc" binding:"required"`
+	Skill []CareerSkillRequest `json:"skills" binding:"required,min=1,dive"`
+}
+
+type CareerSkillRequest struct {
+	SkillID       string `json:"skill_id" binding:"required,uuid"`
+	Priority      int    `json:"priority" binding:"required"`
+	RequiredLevel string `json:"required_level" binding:"required"`
 }
 
 type CareerResponse struct {

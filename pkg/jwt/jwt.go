@@ -18,6 +18,9 @@ type Claims struct {
 func GenerateAccessToken(userId, role string) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	expired := os.Getenv("JWT_EXPIRED")
+	if expired == "" {
+		expired = "15m"
+	}
 
 	duration, err := time.ParseDuration(expired)
 	if err != nil {

@@ -15,6 +15,7 @@ const (
 	RoleUser  Role = "user"
 	RoleAdmin Role = "admin"
 
+	LevelNoExperience LevelEnum = "no_experience"
 	LevelBeginner     LevelEnum = "beginner"
 	LevelIntermediate LevelEnum = "intermediate"
 	LevelExpert       LevelEnum = "expert"

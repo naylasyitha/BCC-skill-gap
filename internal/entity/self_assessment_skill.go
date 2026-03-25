@@ -12,6 +12,7 @@ type SelfAssessmentSkill struct {
 	SkillID             uuid.UUID `gorm:"type:uuid;not null"`
 	Skill               Skill
 	UserLevel           LevelEnum `gorm:"type:varchar(50)"`
+	UserFinalLevel      LevelEnum `gorm:"type:varchar(50)"`
 }
 
 func (s *SelfAssessmentSkill) BeforeCreate(tx *gorm.DB) error {

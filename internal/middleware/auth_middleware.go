@@ -12,37 +12,25 @@ import (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.JSON(http.StatusUnauthorized, gin.H{
+		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"message": "Authorization tidak ditemukan",
+				"message": "Header Authorization tidak ditemukan",
 			})
-			c.Abort()
 			return
 		}
 
-		parts := strings.Split(authHeader, " ")
-		if len(parts) != 2 || parts[0] != "Bearer" {
-			c.JSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"message": "Format token tidak valid, gunakan: Bearer <token>",
-			})
-			c.Abort()
-			return
-		}
-
-		tokenString := parts[1]
-		claims, err := jwt.ValidateToken(tokenString, os.Getenv("JWT_SECRET"))
+		token := strings.TrimPrefix(authHeader, "Bearer ")
+		claims, err := jwt.ValidateToken(token, os.Getenv("JWT_SECRET"))
 		if err != nil {
-			c.JSON(http.StatusUnauthorized, gin.H{
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"message": "Token tidak valid atau sudah expired",
 			})
-			c.Abort()
 			return
 		}
 
-		c.Set("userID", claims.UserID)
+		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
 		c.Next()
 	}

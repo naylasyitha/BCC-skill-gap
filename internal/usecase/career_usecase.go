@@ -5,6 +5,8 @@ import (
 	"errors"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
+
+	"github.com/google/uuid"
 )
 
 type CareerUsecase struct {
@@ -61,11 +63,28 @@ func (cu *CareerUsecase) CreateCareer(ctx context.Context, req dto.CareerCreateR
 		Name: req.Name,
 		Desc: req.Desc,
 	}
-	err := cu.careerRepository.Save(ctx, career)
 
+	var careerSkills []entity.CareerSkill
+
+	for _, reqSkill := range req.Skill {
+		skillUUID, err := uuid.Parse(reqSkill.SkillID)
+		if err != nil {
+			return nil, errors.New("SKill ID tidak Valid")
+		}
+
+		careerSkills = append(careerSkills, entity.CareerSkill{
+			SkillID:       skillUUID,
+			Priority:      reqSkill.Priority,
+			RequiredLevel: entity.LevelEnum(reqSkill.RequiredLevel),
+		})
+
+	}
+
+	err := cu.careerRepository.CreateCareerSkill(ctx, career, careerSkills)
 	if err != nil {
 		return nil, err
 	}
+
 	return &dto.CareerResponse{
 		ID:   career.ID.String(),
 		Name: career.Name,

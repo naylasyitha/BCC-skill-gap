@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
@@ -18,6 +19,7 @@ type AuthUsecase struct {
 func NewAuthUsecase(repo AuthRepository) *AuthUsecase {
 	return &AuthUsecase{authRepo: repo}
 }
+
 func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) error {
 	existEmail, _ := au.authRepo.FindByEmail(ctx, req.Email)
 	if existEmail != nil {
@@ -44,16 +46,14 @@ func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) er
 		return errors.New("Gagal menyimpan user")
 	}
 
-	if req.CallbackUrl != "" {
-		token, err := jwt.GenerateEmailVerificationToken(user.ID.String())
-		if err != nil {
-			return errors.New("gagal generate token verifikasi")
-		}
-
-		err = email.SendVerificationEmail(user.Email, req.CallbackUrl, token)
-		if err != nil {
-			return errors.New("gagal mengirim email verifikasi")
-		}
+	frontendURL := os.Getenv("FE_URL")
+	token, _ := jwt.GenerateEmailVerificationToken(user.ID.String())
+	fmt.Println("EMAIL VERIFICATION TOKEN: ", token)
+	verificationLink := fmt.Sprintf("%s/verify", frontendURL)
+	err = email.SendVerificationEmail(user.Email, verificationLink, token)
+	if err != nil {
+		fmt.Println("EMAIL ERROR: ", err)
+		return errors.New("gagal mengirim email verifikasi" + err.Error())
 	}
 
 	return nil
@@ -91,7 +91,8 @@ func (au *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest) (*dto.Au
 	}
 
 	return &dto.AuthResponse{
-		AccessToken: accessToken,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 		User: dto.UserData{
 			ID:       user.ID.String(),
 			Fullname: user.FullName,
@@ -141,7 +142,13 @@ func (au *AuthUsecase) ResendVerification(ctx context.Context, req dto.ResendVer
 		return errors.New("gagal generate token")
 	}
 
-	return email.SendVerificationEmail(user.Email, req.CallbackUrl, token)
+	fmt.Println("RESEND EMAIL TOKEN: ", token)
+
+	link := req.CallbackUrl
+	if link == "" {
+		link = os.Getenv("FE_URL") + "/verify"
+	}
+	return email.SendVerificationEmail(user.Email, link, token)
 }
 
 func (au *AuthUsecase) ForgotPassword(ctx context.Context, req dto.ForgotPasswordRequest) error {
@@ -156,7 +163,14 @@ func (au *AuthUsecase) ForgotPassword(ctx context.Context, req dto.ForgotPasswor
 		return errors.New("gagal generate token")
 	}
 
-	return email.SendResetPasswordEmail(user.Email, req.CallbackUrl, token)
+	fmt.Println("FORGET PASSWORD TOKEN: ", token)
+
+	link := req.CallbackUrl
+	if link == "" {
+		link = os.Getenv("FE_URL") + "/reset-password"
+	}
+
+	return email.SendResetPasswordEmail(user.Email, link, token)
 }
 
 func (au *AuthUsecase) ResetPassword(ctx context.Context, req dto.ResetPasswordRequest) error {
@@ -221,7 +235,12 @@ func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.A
 }
 
 func (au *AuthUsecase) Logout(ctx context.Context, refreshToken string) error {
-	user, err := au.authRepo.FindByEmail(ctx, "")
+	claims, err := jwt.ValidateToken(refreshToken, os.Getenv("REFRESH_TOKEN_SECRET"))
+	if err != nil {
+		return err
+	}
+
+	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil || user == nil {
 		return nil
 	}

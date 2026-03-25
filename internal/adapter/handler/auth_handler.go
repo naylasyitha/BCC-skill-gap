@@ -66,27 +66,19 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	// Set Durasi cookie
-	maxTime := 24 * 60 * 60
+	maxAgeRefresh := 24 * 3600
 	if req.RememberMe {
-		maxTime = 7 * 24 * 60 * 60
+		maxAgeRefresh = 7 * 24 * 3600
 	}
 
-	c.SetCookie(
-		"refreshToken",
-		result.RefreshToken,
-		maxTime,
-		"/",
-		"",
-		os.Getenv("APP_ENV") == "production",
-		true,
-	)
+	c.SetCookie("accessToken", result.AccessToken, 15*60, "/", "", os.Getenv("APP_ENV") == "production", false)
+	c.SetCookie("refreshToken", result.RefreshToken, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", false)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Login berhasil",
 		"data": gin.H{
-			"accessToken": result.AccessToken,
-			"user":        result.User,
+			"user": result.User,
 		},
 	})
 }
@@ -225,7 +217,8 @@ func (h *AuthHandler) Logout(c *gin.Context) {
 	}
 
 	// Hapus cookie
-	c.SetCookie("refreshToken", "", -1, "/", "", false, true)
+	c.SetCookie("accessToken", "", -1, "/", "", os.Getenv("APP_ENV") == "production", false)
+	c.SetCookie("refreshToken", "", -1, "/", "", os.Getenv("APP_ENV") == "production", false)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
