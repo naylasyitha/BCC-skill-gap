@@ -2,7 +2,7 @@ services:
   app:
     build: .
     container_name: ficky_be 
-    restart: always
+    restart: unless-stopped
     env_file:
       - .env
     ports:
