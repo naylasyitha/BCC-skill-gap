@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    container_name: ficky_be 
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "3007:${APP_PORT}"
+    networks:
+      - postgres_network
+
+networks:
+  postgres_network:
+    external: true
