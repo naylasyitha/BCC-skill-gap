@@ -42,11 +42,40 @@ func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID 
 		return nil, err
 	}
 
+	completedAt := ""
+	if sessions.CompletedAt != nil {
+		completedAt = sessions.CompletedAt.Format(time.RFC3339)
+	}
+
 	return &dto.CareerSessionResponse{
-		ID:        sessions.ID.String(),
-		UserID:    sessions.UserID.String(),
-		CareerID:  sessions.CareerID.String(),
-		Status:    string(sessions.Status),
-		StartedAt: sessions.StartedAt.Format(time.RFC3339),
+		ID:          sessions.ID.String(),
+		UserID:      sessions.UserID.String(),
+		CareerID:    sessions.CareerID.String(),
+		Status:      string(sessions.Status),
+		StartedAt:   sessions.StartedAt.Format(time.RFC3339),
+		CompletedAt: completedAt,
+	}, nil
+}
+
+func (cs *CareerSessionUsecase) GetCareerSession(ctx context.Context, careerSessionID string) (*dto.CareerSessionDetailResponse, error) {
+	careerSession, err := cs.careerSessionRepo.FindById(ctx, careerSessionID)
+	if err != nil {
+		return nil, errors.New("Career Session tidak ditemukan")
+	}
+
+	completedAt := ""
+	if careerSession.CompletedAt != nil {
+		completedAt = careerSession.CompletedAt.Format(time.RFC3339)
+	}
+
+	return &dto.CareerSessionDetailResponse{
+		ID:          careerSession.ID.String(),
+		UserID:      careerSession.UserID.String(),
+		Fullname:    careerSession.User.FullName,
+		CareerID:    careerSession.CareerID.String(),
+		CareerName:  careerSession.Career.Name,
+		Status:      string(careerSession.Status),
+		StartedAt:   careerSession.StartedAt.Format(time.RFC3339),
+		CompletedAt: completedAt,
 	}, nil
 }

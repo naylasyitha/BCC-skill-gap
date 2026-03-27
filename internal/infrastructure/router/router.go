@@ -105,6 +105,7 @@ func (r *Router) SetupRouter() *gin.Engine {
 	careerSession := api.Group("/career-sessions")
 	{
 		careerSession.POST("", r.careerSessionHandler.Create)
+		careerSession.GET("/:careerSessionId", r.careerSessionHandler.GetCareerSession)
 		careerSession.POST("/:careerSessionId/assessment", r.selfAssessment.SubmitAssessment)
 		careerSession.POST("/quiz/:careerSessionId/start", r.quizHandler.StartQuiz)
 	}

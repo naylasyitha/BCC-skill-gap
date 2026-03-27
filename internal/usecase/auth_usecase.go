@@ -166,10 +166,7 @@ func (au *AuthUsecase) ForgotPassword(ctx context.Context, req dto.ForgotPasswor
 
 	fmt.Println("FORGET PASSWORD TOKEN: ", token)
 
-	link := req.CallbackUrl
-	if link == "" {
-		link = os.Getenv("FE_URL") + "/reset-password"
-	}
+	link := os.Getenv("FE_URL") + "/reset-password"
 
 	return email.SendResetPasswordEmail(user.Email, link, token)
 }

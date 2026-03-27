@@ -4,7 +4,7 @@ type RegisterRequest struct {
 	Fullname    string `json:"full_name" binding:"required"`
 	Email       string `json:"email" binding:"required,email"`
 	Password    string `json:"password" binding:"required,min=8"`
-	CallbackUrl string `json:"callbackUrl"`
+	CallbackUrl string `json:"callback_url"`
 }
 
 type LoginRequest struct {
@@ -23,8 +23,7 @@ type ResendVerificationRequest struct {
 }
 
 type ForgotPasswordRequest struct {
-	Email       string `json:"email" binding:"required,email"`
-	CallbackUrl string `json:"callbackUrl"`
+	Email string `json:"email" binding:"required,email"`
 }
 
 type ResetPasswordRequest struct {

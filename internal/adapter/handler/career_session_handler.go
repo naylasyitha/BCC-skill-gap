@@ -50,3 +50,19 @@ func (h *CareerSessionHandler) Create(c *gin.Context) {
 		"data":    res,
 	})
 }
+func (h *CareerSessionHandler) GetCareerSession(c *gin.Context) {
+	careerSession, err := h.careerSessionUsecase.GetCareerSession(c.Request.Context(), c.Param("careerSessionId"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": err.Error(),
+		})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "Berhasil Mengambil Career Session",
+		"data":    careerSession,
+	})
+}

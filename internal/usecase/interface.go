@@ -39,6 +39,7 @@ type CareerSkillRepository interface {
 
 type CareerSessionRepository interface {
 	Create(ctx context.Context, session *entity.UserCareerSession) error
+	FindById(ctx context.Context, careerSessionId string) (*entity.UserCareerSession, error)
 }
 
 type SelfAssessmentRepository interface {
