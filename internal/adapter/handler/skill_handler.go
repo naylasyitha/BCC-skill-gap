@@ -34,7 +34,7 @@ func (s *SkillHandler) GetAllSkill(c *gin.Context) {
 }
 
 func (s *SkillHandler) GetSkillById(c *gin.Context) {
-	result, err := s.skillUsecase.GetSkillById(c.Request.Context(), c.Param("id"))
+	result, err := s.skillUsecase.GetSkillById(c.Request.Context(), c.Param("skillId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -88,7 +88,7 @@ func (s *SkillHandler) UpdateSkill(c *gin.Context) {
 		return
 	}
 
-	result, err := s.skillUsecase.UpdateSkill(c.Request.Context(), c.Param("id"), req)
+	result, err := s.skillUsecase.UpdateSkill(c.Request.Context(), c.Param("skillId"), req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -105,7 +105,7 @@ func (s *SkillHandler) UpdateSkill(c *gin.Context) {
 }
 
 func (s *SkillHandler) DeleteSkill(c *gin.Context) {
-	err := s.skillUsecase.DeleteSkill(c.Request.Context(), c.Param("id"))
+	err := s.skillUsecase.DeleteSkill(c.Request.Context(), c.Param("skillId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -158,7 +158,7 @@ func (s *SkillHandler) UpdateCareerSkill(c *gin.Context) {
 		return
 	}
 
-	result, err := s.skillUsecase.UpdateCareerSkill(c.Request.Context(), c.Param("id"), req)
+	result, err := s.skillUsecase.UpdateCareerSkill(c.Request.Context(), c.Param("skillId"), req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -175,7 +175,7 @@ func (s *SkillHandler) UpdateCareerSkill(c *gin.Context) {
 }
 
 func (s *SkillHandler) RemoveSkillFromCareer(c *gin.Context) {
-	err := s.skillUsecase.RemoveSkillFromCareer(c.Request.Context(), c.Param("id"))
+	err := s.skillUsecase.RemoveSkillFromCareer(c.Request.Context(), c.Param("skillId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,

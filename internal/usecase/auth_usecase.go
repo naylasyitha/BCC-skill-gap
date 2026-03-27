@@ -199,7 +199,7 @@ func (au *AuthUsecase) ResetPassword(ctx context.Context, req dto.ResetPasswordR
 	return au.authRepo.Update(ctx, user)
 }
 
-func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.AuthResponse, error) {
+func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
 
 	claims, err := jwt.ValidateToken(refreshToken, os.Getenv("REFRESH_TOKEN_SECRET"))
 	if err != nil {
@@ -224,14 +224,8 @@ func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.A
 		return nil, errors.New("gagal generate access token")
 	}
 
-	return &dto.AuthResponse{
+	return &dto.RefreshResponse{
 		AccessToken: accessToken,
-		User: dto.UserData{
-			ID:       user.ID.String(),
-			Fullname: user.FullName,
-			Email:    user.Email,
-			Role:     string(user.Role),
-		},
 	}, nil
 }
 

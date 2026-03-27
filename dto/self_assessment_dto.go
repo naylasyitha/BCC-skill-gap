@@ -1,8 +1,7 @@
 package dto
 
 type SelfAssessmentRequest struct {
-	CareerID string              `json:"career_id" binding:"required,uuid"`
-	Skills   []SkillLevelRequest `json:"skills" binding:"required,min=1,dive"`
+	Skills []SkillLevelRequest `json:"skills" binding:"required,min=1,dive"`
 }
 
 type SkillLevelRequest struct {

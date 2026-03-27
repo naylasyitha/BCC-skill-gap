@@ -17,6 +17,15 @@ func NewSelfAssessmentHandler(us *usecase.SelfAssessmentUsecase) *SelfAssessment
 }
 
 func (s *SelfAssessmentHandler) SubmitAssessment(c *gin.Context) {
+	careersessionID := c.Param("careerSessionId")
+	if careersessionID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Career session ID tidak ada",
+		})
+		return
+	}
+
 	var req dto.SelfAssessmentRequest
 	err := c.ShouldBindJSON(&req)
 
@@ -28,16 +37,7 @@ func (s *SelfAssessmentHandler) SubmitAssessment(c *gin.Context) {
 		return
 	}
 
-	userID, exists := c.Get("user_id")
-	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{
-			"success": false,
-			"message": "User tidak ditemukan atau sesi telah habis",
-		})
-		return
-	}
-
-	res, err := s.selfAssessmentUsecase.ProcessSelfAssessment(c.Request.Context(), userID.(string), req)
+	res, err := s.selfAssessmentUsecase.ProcessSelfAssessment(c.Request.Context(), careersessionID, req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

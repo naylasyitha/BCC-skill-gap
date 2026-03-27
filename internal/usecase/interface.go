@@ -42,7 +42,7 @@ type CareerSessionRepository interface {
 }
 
 type SelfAssessmentRepository interface {
-	CreateAssessmentSession(ctx context.Context, session *entity.UserCareerSession, skills []entity.SelfAssessmentSkill) error
+	CreateAssessmentSession(ctx context.Context, skills []entity.SelfAssessmentSkill) error
 }
 
 type QuizRepository interface {

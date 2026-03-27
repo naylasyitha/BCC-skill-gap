@@ -60,7 +60,7 @@ func (h *QuestionHandler) GetAllQuestion(c *gin.Context) {
 }
 
 func (h *QuestionHandler) GetQuestionById(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("questionId")
 
 	res, err := h.questionUsecase.GetQuestionById(c.Request.Context(), id)
 	if err != nil {
@@ -79,7 +79,7 @@ func (h *QuestionHandler) GetQuestionById(c *gin.Context) {
 }
 
 func (h *QuestionHandler) UpdateQuestion(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("questionId")
 
 	var req dto.QuestionUpdateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -107,7 +107,7 @@ func (h *QuestionHandler) UpdateQuestion(c *gin.Context) {
 }
 
 func (h *QuestionHandler) DeleteQuestion(c *gin.Context) {
-	id := c.Param("id")
+	id := c.Param("questionId")
 
 	err := h.questionUsecase.DeleteQuestion(c.Request.Context(), id)
 	if err != nil {

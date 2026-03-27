@@ -34,7 +34,7 @@ func (ch *CareerHandler) GetAllCareer(c *gin.Context) {
 }
 
 func (ch *CareerHandler) GetCareerById(c *gin.Context) {
-	result, err := ch.careerUsecase.GetCareerById(c.Request.Context(), c.Param("id"))
+	result, err := ch.careerUsecase.GetCareerById(c.Request.Context(), c.Param("careerId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
@@ -78,7 +78,7 @@ func (ch *CareerHandler) CreateCareer(c *gin.Context) {
 }
 
 func (h *CareerHandler) UpdateCareer(c *gin.Context) {
-	careerID := c.Param("id")
+	careerID := c.Param("careerId")
 
 	var req dto.CareerEditRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -106,7 +106,7 @@ func (h *CareerHandler) UpdateCareer(c *gin.Context) {
 }
 
 func (ch *CareerHandler) DeleteCareer(c *gin.Context) {
-	err := ch.careerUsecase.DeleteCareer(c.Request.Context(), c.Param("id"))
+	err := ch.careerUsecase.DeleteCareer(c.Request.Context(), c.Param("careerId"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
