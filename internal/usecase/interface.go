@@ -37,12 +37,25 @@ type CareerSkillRepository interface {
 	Save(ctx context.Context, skill *entity.CareerSkill) error
 }
 
+type CareerSessionRepository interface {
+	Create(ctx context.Context, session *entity.UserCareerSession) error
+	FindById(ctx context.Context, careerSessionId string) (*entity.UserCareerSession, error)
+}
+
 type SelfAssessmentRepository interface {
-	CreateAssessmentSession(ctx context.Context, session *entity.UserCareerSession, skills []entity.SelfAssessmentSkill) error
+	CreateAssessmentSession(ctx context.Context, skills []entity.SelfAssessmentSkill) error
 }
 
 type QuizRepository interface {
 	GetSelfAssessmentSkillsBySession(ctx context.Context, sessionID string) ([]entity.SelfAssessmentSkill, error)
 	GetRandomQuestionBySkillAndLevel(ctx context.Context, skillID string, level entity.LevelEnum) (*entity.Question, error)
 	CreateQuizTransaction(ctx context.Context, quizSession *entity.QuizSession, quizAnswers []entity.QuizAnswer) error
+}
+
+type QuestionRepository interface {
+	Create(ctx context.Context, question *entity.Question) error
+	FindAll(ctx context.Context) ([]entity.Question, error)
+	FindById(ctx context.Context, id string) (*entity.Question, error)
+	Update(ctx context.Context, question *entity.Question) error
+	Delete(ctx context.Context, id string) error
 }
