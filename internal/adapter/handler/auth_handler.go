@@ -71,14 +71,16 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		maxAgeRefresh = 7 * 24 * 3600
 	}
 
-	c.SetCookie("accessToken", result.AccessToken, 15*60, "/", "", os.Getenv("APP_ENV") == "production", false)
-	c.SetCookie("refreshToken", result.RefreshToken, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", false)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("refresh_token", result.RefreshToken, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", true)
+	c.SetCookie("role", result.User.Role, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", false)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "Login berhasil",
 		"data": gin.H{
-			"user": result.User,
+			"access_token": result.AccessToken,
+			"user":         result.User,
 		},
 	})
 }
@@ -184,8 +186,8 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie("refreshToken")
-	if err != nil {
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil || refreshToken == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{
 			"success": false,
 			"message": "Refresh token tidak ditemukan",
@@ -210,15 +212,16 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	refreshToken, _ := c.Cookie("refreshToken")
+	refreshToken, _ := c.Cookie("refresh_token")
 
 	if refreshToken != "" {
 		h.authUsecase.Logout(c.Request.Context(), refreshToken)
 	}
 
 	// Hapus cookie
-	c.SetCookie("accessToken", "", -1, "/", "", os.Getenv("APP_ENV") == "production", false)
-	c.SetCookie("refreshToken", "", -1, "/", "", os.Getenv("APP_ENV") == "production", false)
+	c.SetSameSite(http.SameSiteNoneMode)
+	c.SetCookie("refresh_token", "", -1, "/", "", os.Getenv("APP_ENV") == "production", true)
+	c.SetCookie("role", "", -1, "/", "", os.Getenv("APP_ENV") == "production", false)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

@@ -25,11 +25,11 @@ func (h *QuizHandler) StartQuiz(c *gin.Context) {
 		return
 	}
 
-	careerSessionID := c.Param("id")
+	careerSessionID := c.Param("careerSessionId")
 	if careerSessionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "ID Sesi Karir tidak valid",
+			"message": "career session ID tidak valid",
 		})
 		return
 	}

@@ -166,10 +166,7 @@ func (au *AuthUsecase) ForgotPassword(ctx context.Context, req dto.ForgotPasswor
 
 	fmt.Println("FORGET PASSWORD TOKEN: ", token)
 
-	link := req.CallbackUrl
-	if link == "" {
-		link = os.Getenv("FE_URL") + "/reset-password"
-	}
+	link := os.Getenv("FE_URL") + "/reset-password"
 
 	return email.SendResetPasswordEmail(user.Email, link, token)
 }
@@ -199,7 +196,7 @@ func (au *AuthUsecase) ResetPassword(ctx context.Context, req dto.ResetPasswordR
 	return au.authRepo.Update(ctx, user)
 }
 
-func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.AuthResponse, error) {
+func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
 
 	claims, err := jwt.ValidateToken(refreshToken, os.Getenv("REFRESH_TOKEN_SECRET"))
 	if err != nil {
@@ -224,14 +221,8 @@ func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.A
 		return nil, errors.New("gagal generate access token")
 	}
 
-	return &dto.AuthResponse{
+	return &dto.RefreshResponse{
 		AccessToken: accessToken,
-		User: dto.UserData{
-			ID:       user.ID.String(),
-			Fullname: user.FullName,
-			Email:    user.Email,
-			Role:     string(user.Role),
-		},
 	}, nil
 }
 

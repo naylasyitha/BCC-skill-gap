@@ -17,22 +17,12 @@ func NewSelfAssessmentUsecase(repo SelfAssessmentRepository) *SelfAssessmentUsec
 	return &SelfAssessmentUsecase{selfAssessmentRepository: repo}
 }
 
-func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, userID string, req dto.SelfAssessmentRequest) (dto.SelfAssessmentResponse, error) {
+func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, careerSessionID string, req dto.SelfAssessmentRequest) (dto.SelfAssessmentResponse, error) {
 	var response dto.SelfAssessmentResponse
 
-	userUUID, err := uuid.Parse(userID)
+	careerSessionUUID, err := uuid.Parse(careerSessionID)
 	if err != nil {
-		return response, errors.New("User ID tidak valid")
-	}
-
-	careerUUID, err := uuid.Parse(req.CareerID)
-	if err != nil {
-		return response, errors.New("Career ID tidak valid")
-	}
-	session := &entity.UserCareerSession{
-		UserID:   userUUID,
-		CareerID: careerUUID,
-		Status:   entity.StatusOnProcess,
+		return response, errors.New("Career Session ID tidak valid")
 	}
 
 	var skills []entity.SelfAssessmentSkill
@@ -42,17 +32,19 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, userI
 		if err != nil {
 			return response, errors.New("Skill ID tidak valid")
 		}
+
 		skills = append(skills, entity.SelfAssessmentSkill{
-			SkillID:   skillUUID,
-			UserLevel: entity.LevelEnum(skillReq.UserLevel),
+			UserCareerSessionID: careerSessionUUID,
+			SkillID:             skillUUID,
+			UserLevel:           entity.LevelEnum(skillReq.UserLevel),
 		})
 	}
 
-	if err := s.selfAssessmentRepository.CreateAssessmentSession(ctx, session, skills); err != nil {
+	if err := s.selfAssessmentRepository.CreateAssessmentSession(ctx, skills); err != nil {
 		return response, err
 	}
 
 	// Langkah E: Kembalikan ID sesi yang berhasil dibuat ke dalam Response DTO
-	response.UserCareerSessionID = session.ID.String()
+	response.UserCareerSessionID = careerSessionUUID.String()
 	return response, nil
 }

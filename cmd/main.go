@@ -25,20 +25,26 @@ func main() {
 	careerSkillRepo := repository.NewCareerSkillRepository(db)
 	selfAssesmentRepo := repository.NewSelfAssessmentRepository(db)
 	quizRepo := repository.NewQuizRepository(db)
+	careerSessionRepo := repository.NewCareerSessionRepository(db)
+	questionRepo := repository.NewQuestionRepository(db)
 
 	authUsecase := usecase.NewAuthUsecase(authRepo)
 	careerUsecase := usecase.NewCareerUsecase(careerRepo, skillRepo)
 	skillUsecase := usecase.NewSkillUsecase(skillRepo, careerSkillRepo)
 	selfAssessmentUsecase := usecase.NewSelfAssessmentUsecase(selfAssesmentRepo)
 	quizUsecase := usecase.NewQuizUsecase(quizRepo)
+	careerSessionUsecase := usecase.NewCareerSessionUsecase(careerSessionRepo, careerRepo)
+	questionUsecase := usecase.NewQuestionUsecase(questionRepo, skillRepo)
 
 	authHandler := handler.NewAuthHandler(authUsecase)
 	careerHandler := handler.NewCareerHandler(careerUsecase)
 	skillHandler := handler.NewSkillHandler(skillUsecase)
 	selfAssesmentHandler := handler.NewSelfAssessmentHandler(selfAssessmentUsecase)
 	quizHandler := handler.NewQuizHandler(*quizUsecase)
+	careerSessionHandler := handler.NewCareerSessionHandler(careerSessionUsecase)
+	questionHandler := handler.NewQuestionHandler(questionUsecase)
 
-	r := router.NewRouter(authHandler, careerHandler, skillHandler, selfAssesmentHandler, quizHandler)
+	r := router.NewRouter(authHandler, careerHandler, skillHandler, selfAssesmentHandler, quizHandler, careerSessionHandler, questionHandler)
 
 	app := r.SetupRouter()
 

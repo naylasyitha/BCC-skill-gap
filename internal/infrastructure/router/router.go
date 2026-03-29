@@ -9,11 +9,13 @@ import (
 )
 
 type Router struct {
-	authHandler    *handler.AuthHandler
-	careerHandler  *handler.CareerHandler
-	skillHandler   *handler.SkillHandler
-	selfAssessment *handler.SelfAssessmentHandler
-	quizHandler    *handler.QuizHandler
+	authHandler          *handler.AuthHandler
+	careerHandler        *handler.CareerHandler
+	skillHandler         *handler.SkillHandler
+	selfAssessment       *handler.SelfAssessmentHandler
+	quizHandler          *handler.QuizHandler
+	careerSessionHandler *handler.CareerSessionHandler
+	questionHandler      *handler.QuestionHandler
 }
 
 func NewRouter(
@@ -22,19 +24,35 @@ func NewRouter(
 	sh *handler.SkillHandler,
 	sa *handler.SelfAssessmentHandler,
 	qu *handler.QuizHandler,
+	cs *handler.CareerSessionHandler,
+	que *handler.QuestionHandler,
 ) *Router {
 	return &Router{
-		authHandler:    ah,
-		careerHandler:  ch,
-		skillHandler:   sh,
-		selfAssessment: sa,
-		quizHandler:    qu,
+		authHandler:          ah,
+		careerHandler:        ch,
+		skillHandler:         sh,
+		selfAssessment:       sa,
+		quizHandler:          qu,
+		careerSessionHandler: cs,
+		questionHandler:      que,
 	}
 }
 
 func (r *Router) SetupRouter() *gin.Engine {
 	router := gin.Default()
-	router.Use(cors.Default())
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = []string{
+		"http://localhost:3000",
+	}
+	corsConfig.AllowCredentials = true
+	corsConfig.AllowHeaders = []string{
+		"Origin",
+		"Content-Type",
+		"Accept",
+		"Authorization",
+	}
+
+	router.Use(cors.New(corsConfig))
 
 	api := router.Group("/api")
 
@@ -55,36 +73,50 @@ func (r *Router) SetupRouter() *gin.Engine {
 	career := api.Group("/careers")
 	{
 		career.GET("", r.careerHandler.GetAllCareer)
-		career.GET("/:id", r.careerHandler.GetCareerById)
+		career.GET("/:careerId", r.careerHandler.GetCareerById)
 
 		career.POST("", middleware.AdminMiddleware(), r.careerHandler.CreateCareer)
-		career.PATCH("/:id", middleware.AdminMiddleware(), r.careerHandler.UpdateCareer)
-		career.DELETE("/:id", middleware.AdminMiddleware(), r.careerHandler.DeleteCareer)
+		career.PATCH("/:careerId", middleware.AdminMiddleware(), r.careerHandler.UpdateCareer)
+		career.DELETE("/:careerId", middleware.AdminMiddleware(), r.careerHandler.DeleteCareer)
 	}
 
 	skill := api.Group("/skills")
 	{
 		skill.GET("", r.skillHandler.GetAllSkill)
-		skill.GET("/:id", r.skillHandler.GetSkillById)
+		skill.GET("/:skillId", r.skillHandler.GetSkillById)
 
 		skill.POST("", middleware.AdminMiddleware(), r.skillHandler.CreateSkill)
-		skill.PATCH("/:id", middleware.AdminMiddleware(), r.skillHandler.UpdateSkill)
-		skill.DELETE("/:id", middleware.AdminMiddleware(), r.skillHandler.DeleteSkill)
+		skill.PATCH("/:skillId", middleware.AdminMiddleware(), r.skillHandler.UpdateSkill)
+		skill.DELETE("/:skillId", middleware.AdminMiddleware(), r.skillHandler.DeleteSkill)
+
+	}
+
+	question := api.Group("/questions")
+	{
+		question.GET("", r.questionHandler.GetAllQuestion)
+		question.GET("/:questionId", r.questionHandler.GetQuestionById)
+
+		question.POST("", middleware.AdminMiddleware(), r.questionHandler.CreateQuestion)
+		question.PATCH("/:questionId", middleware.AdminMiddleware(), r.questionHandler.UpdateQuestion)
+		question.DELETE("/:questionId", middleware.AdminMiddleware(), r.questionHandler.DeleteQuestion)
 
 	}
 
 	careerSession := api.Group("/career-sessions")
 	{
-		careerSession.POST("/:id/assessment", r.selfAssessment.SubmitAssessment)
-		careerSession.POST("/:id/quiz/start", r.quizHandler.StartQuiz)
+		careerSession.POST("", r.careerSessionHandler.Create)
+		careerSession.GET("/:careerSessionId", r.careerSessionHandler.GetCareerSession)
+		careerSession.POST("/:careerSessionId/assessment", r.selfAssessment.SubmitAssessment)
+		careerSession.POST("/quiz/:careerSessionId/start", r.quizHandler.StartQuiz)
 	}
 
-	careerSkills := api.Group("/career-skills")
-	{
-		careerSkills.POST("/career-skills", middleware.AdminMiddleware(), r.skillHandler.CareerSkillAsign)
-		careerSkills.PATCH("/career-skills/:id", middleware.AdminMiddleware(), r.skillHandler.UpdateCareerSkill)
-		careerSkills.DELETE("/career-skills/:id", middleware.AdminMiddleware(), r.skillHandler.RemoveSkillFromCareer)
-	}
+	//konsep awal untuk cadangan just in case
+	// careerSkills := api.Group("/career-skills")
+	// {
+	// 	careerSkills.POST("", middleware.AdminMiddleware(), r.skillHandler.CareerSkillAsign)
+	// 	careerSkills.PATCH("/:id", middleware.AdminMiddleware(), r.skillHandler.UpdateCareerSkill)
+	// 	careerSkills.DELETE("/:id", middleware.AdminMiddleware(), r.skillHandler.RemoveSkillFromCareer)
+	// }
 
 	return router
 }

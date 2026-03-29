@@ -13,8 +13,6 @@ type QuizSession struct {
 	User                User
 	UserCareerSessionID uuid.UUID `gorm:"type:uuid;not null"`
 	UserCareerSession   UserCareerSession
-	SkillID             uuid.UUID `gorm:"type:uuid;not null"`
-	Skill               Skill
 	Status              StatusEnum `gorm:"type:varchar(50);default:'on_process'"`
 	Score               float64    `gorm:"type:float8"`
 	StartedAt           time.Time  `gorm:"autoCreateTime"`
