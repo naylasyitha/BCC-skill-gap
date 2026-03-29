@@ -17,8 +17,9 @@ RUN apk --no-cache add ca-certificates curl tzdata && update-ca-certificates
 WORKDIR /app
 
 COPY --from=builder /app/bin/bcc-skill-gap .
+COPY .env .env
 
-ARG APP_PORT=8080
+ARG APP_PORT=3007
 EXPOSE ${APP_PORT}
 
 ENTRYPOINT [ "./bcc-skill-gap" ]
