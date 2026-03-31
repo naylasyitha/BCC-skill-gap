@@ -38,3 +38,13 @@ func (c *careerSessionRepository) FindById(ctx context.Context, careerSessionId 
 
 	return &careerSession, nil
 }
+func (c *careerSessionRepository) CountByUserID(ctx context.Context, userID string) (int, error) {
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return 0, errors.New("Format ID tidak valid")
+	}
+
+	var count int64
+	err = c.db.WithContext(ctx).Model(&entity.UserCareerSession{}).Where("user_id = ?", userUUID).Count(&count).Error
+	return int(count), err
+}

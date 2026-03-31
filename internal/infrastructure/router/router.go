@@ -45,6 +45,7 @@ func NewRouter(
 func (r *Router) SetupRouter() *gin.Engine {
 	router := gin.Default()
 	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowAllOrigins = false
 	corsConfig.AllowOrigins = []string{
 		"http://localhost:3000",
 	}

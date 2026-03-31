@@ -13,29 +13,53 @@ import (
 type CareerSessionUsecase struct {
 	careerSessionRepo CareerSessionRepository
 	careerRepo        CareerRepository
+	authRepo          AuthRepository
 }
 
 func NewCareerSessionUsecase(
 	csRepo CareerSessionRepository,
 	cRepo CareerRepository,
+	aRepo AuthRepository,
 ) *CareerSessionUsecase {
 	return &CareerSessionUsecase{
 		careerSessionRepo: csRepo,
 		careerRepo:        cRepo,
+		authRepo:          aRepo,
 	}
 }
 
 func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID string, req dto.CareerSessionCreateRequest) (*dto.CareerSessionResponse, error) {
+	user, err := cs.authRepo.FindByID(ctx, userID)
+	if err != nil || user == nil {
+		return nil, errors.New("User tidak ditemukan")
+	}
 
-	_, err := cs.careerRepo.FindById(ctx, req.CareerID)
+	if !user.IsPremium {
+		count, err := cs.careerSessionRepo.CountByUserID(ctx, user.ID.String())
+		if err != nil {
+			return nil, errors.New("Gagal menghitung batas karir")
+		}
+		if count >= 3 {
+			return nil, errors.New("Gagal menambah karir, karir sudah mencapai batas. Silahkan upgrade menjadi premium untuk memilih karir lebih banyak.")
+		}
+	}
+
+	_, err = cs.careerRepo.FindById(ctx, req.CareerID)
 	if err != nil {
 		return nil, errors.New("Karir tidak ditemukan")
 	}
+	userUUID := user.ID
+
+	careerUUID, err := uuid.Parse(req.CareerID)
+	if err != nil {
+		return nil, errors.New("Format ID karir tidak valid")
+	}
 
 	sessions := &entity.UserCareerSession{
-		UserID:   uuid.MustParse(userID),
-		CareerID: uuid.MustParse(req.CareerID),
-		Status:   entity.StatusOnAssessment,
+		UserID:    userUUID,
+		CareerID:  careerUUID,
+		Status:    entity.StatusOnAssessment,
+		StartedAt: time.Now(),
 	}
 
 	err = cs.careerSessionRepo.Create(ctx, sessions)

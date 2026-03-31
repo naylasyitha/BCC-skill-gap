@@ -6,7 +6,7 @@ type SkillCreateRequest struct {
 }
 
 type SkillResponse struct {
-	ID   string `json:"id"`
+	ID   string `json:"skill_id"`
 	Name string `json:"name"`
 	Desc string `json:"desc"`
 }

@@ -33,7 +33,7 @@ func main() {
 	skillUsecase := usecase.NewSkillUsecase(skillRepo, careerSkillRepo)
 	selfAssessmentUsecase := usecase.NewSelfAssessmentUsecase(selfAssesmentRepo, careerSessionRepo)
 	quizUsecase := usecase.NewQuizUsecase(quizRepo)
-	careerSessionUsecase := usecase.NewCareerSessionUsecase(careerSessionRepo, careerRepo)
+	careerSessionUsecase := usecase.NewCareerSessionUsecase(careerSessionRepo, careerRepo, authRepo)
 	questionUsecase := usecase.NewQuestionUsecase(questionRepo, skillRepo)
 
 	authHandler := handler.NewAuthHandler(authUsecase)

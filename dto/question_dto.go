@@ -13,7 +13,7 @@ type QuestionCreateRequest struct {
 }
 
 type QuestionResponse struct {
-	ID              string `json:"id"`
+	ID              string `json:"question_id"`
 	SkillID         string `json:"skill_id"`
 	Level           string `json:"level"`
 	QuestionContent string `json:"question_content"`

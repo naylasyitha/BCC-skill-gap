@@ -13,13 +13,13 @@ type CareerSkillRequest struct {
 }
 
 type CareerResponse struct {
-	ID   string `json:"id"`
+	ID   string `json:"career_id"`
 	Name string `json:"name"`
 	Desc string `json:"desc"`
 }
 
 type SkillsResponse struct {
-	ID            string `json:"id"`
+	ID            string `json:"skill_id"`
 	Name          string `json:"name"`
 	Desc          string `json:"desc"`
 	Priority      int    `json:"priority"`
@@ -27,7 +27,7 @@ type SkillsResponse struct {
 }
 
 type CareerSkillResponse struct {
-	ID     string           `json:"id"`
+	ID     string           `json:"career_id"`
 	Name   string           `json:"name"`
 	Desc   string           `json:"desc"`
 	Skills []SkillsResponse `json:"skills"`

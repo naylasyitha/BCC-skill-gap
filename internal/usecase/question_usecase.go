@@ -32,6 +32,11 @@ func (u *QuestionUsecase) CreateQuestion(ctx context.Context, req dto.QuestionCr
 		return nil, errors.New("Skill tidak ditemukan")
 	}
 
+	explanation := req.Explanation
+	if explanation == "" {
+		explanation = "Tidak ada penjelasan"
+	}
+
 	newQuestion := &entity.Question{
 		ID:              uuid.New(),
 		SkillID:         skillUUID,
@@ -42,7 +47,7 @@ func (u *QuestionUsecase) CreateQuestion(ctx context.Context, req dto.QuestionCr
 		OptionC:         req.OptionC,
 		OptionD:         req.OptionD,
 		Answer:          req.Answer,
-		Explanation:     req.Explanation,
+		Explanation:     explanation,
 	}
 
 	err = u.questionRepo.Create(ctx, newQuestion)
