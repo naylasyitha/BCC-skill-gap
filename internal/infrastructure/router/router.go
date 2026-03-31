@@ -48,6 +48,7 @@ func (r *Router) SetupRouter() *gin.Engine {
 	corsConfig.AllowAllOrigins = false
 	corsConfig.AllowOrigins = []string{
 		"http://localhost:3000",
+		"https://skillgap-staging.vercel.app",
 	}
 	corsConfig.AllowCredentials = true
 	corsConfig.AllowHeaders = []string{
@@ -73,16 +74,19 @@ func (r *Router) SetupRouter() *gin.Engine {
 		auth.POST("/reset-password", r.authHandler.ResetPassword)
 	}
 
+	careerPublic := api.Group("/careers")
+	{
+		careerPublic.GET("", r.careerHandler.GetAllCareer)
+		careerPublic.GET("/:careerId", r.careerHandler.GetCareerById)
+	}
+
 	api.Use(middleware.AuthMiddleware(r.authRepo))
 
-	career := api.Group("/careers")
+	careerPrivate := api.Group("/careers")
 	{
-		career.GET("", r.careerHandler.GetAllCareer)
-		career.GET("/:careerId", r.careerHandler.GetCareerById)
-
-		career.POST("", middleware.AdminMiddleware(), r.careerHandler.CreateCareer)
-		career.PATCH("/:careerId", middleware.AdminMiddleware(), r.careerHandler.UpdateCareer)
-		career.DELETE("/:careerId", middleware.AdminMiddleware(), r.careerHandler.DeleteCareer)
+		careerPrivate.POST("", middleware.AdminMiddleware(), r.careerHandler.CreateCareer)
+		careerPrivate.PATCH("/:careerId", middleware.AdminMiddleware(), r.careerHandler.UpdateCareer)
+		careerPrivate.DELETE("/:careerId", middleware.AdminMiddleware(), r.careerHandler.DeleteCareer)
 	}
 
 	skill := api.Group("/skills")
