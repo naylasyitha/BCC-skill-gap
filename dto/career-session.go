@@ -5,7 +5,7 @@ type CareerSessionCreateRequest struct {
 }
 
 type CareerSessionResponse struct {
-	ID          string `json:"id"`
+	ID          string `json:"career_session_id"`
 	UserID      string `json:"user_id"`
 	CareerID    string `json:"career_id"`
 	Status      string `json:"status"`
@@ -14,7 +14,7 @@ type CareerSessionResponse struct {
 }
 
 type CareerSessionDetailResponse struct {
-	ID          string `json:"id"`
+	ID          string `json:"career_session_id"`
 	UserID      string `json:"user_id"`
 	Fullname    string `json:"full_name"`
 	CareerID    string `json:"career_id"`

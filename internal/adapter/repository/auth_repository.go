@@ -44,3 +44,10 @@ func (a *authRepository) FindByID(ctx context.Context, id string) (*entity.User,
 func (a *authRepository) Update(ctx context.Context, user *entity.User) error {
 	return a.db.WithContext(ctx).Save(user).Error
 }
+
+func (r *authRepository) UpdateRefreshToken(ctx context.Context, id string, token string) error {
+	return r.db.WithContext(ctx).
+		Model(&entity.User{}).
+		Where("id = ?", id).
+		UpdateColumn("refresh_token", token).Error
+}

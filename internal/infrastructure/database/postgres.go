@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"project-bcc/internal/entity"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -26,23 +25,6 @@ func ConnectDB() *gorm.DB {
 		log.Fatal("Koneksi database gagal", err)
 	}
 
-	err = db.AutoMigrate(
-		&entity.User{},
-		&entity.Career{},
-		&entity.Skill{},
-		&entity.CareerSkill{},
-		&entity.UserCareerSession{},
-		&entity.SelfAssessmentSkill{},
-		&entity.Question{},
-		&entity.QuizSession{},
-		&entity.QuizAnswer{},
-		&entity.Material{},
-		&entity.LearningPathProgress{},
-	)
-
-	if err != nil {
-		log.Fatal("Gagal membuat migrasi database")
-	}
 	log.Println("Koneksi database berhasil")
 
 	return db

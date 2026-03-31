@@ -35,6 +35,7 @@ func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID 
 	sessions := &entity.UserCareerSession{
 		UserID:   uuid.MustParse(userID),
 		CareerID: uuid.MustParse(req.CareerID),
+		Status:   entity.StatusOnAssessment,
 	}
 
 	err = cs.careerSessionRepo.Create(ctx, sessions)

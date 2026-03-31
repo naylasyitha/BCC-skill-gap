@@ -9,13 +9,14 @@ import (
 )
 
 type Claims struct {
-	UserID string `json:"user_id"`
-	Role   string `json:"role"`
-	Type   string `json:"type"`
+	UserID    string `json:"user_id"`
+	Role      string `json:"role"`
+	UpdatedAt int64  `json:"updated_at"`
+	Type      string `json:"type"`
 	jwt.RegisteredClaims
 }
 
-func GenerateAccessToken(userId, role string) (string, error) {
+func GenerateAccessToken(userId, role string, updatedAt int64) (string, error) {
 	secret := os.Getenv("JWT_SECRET")
 	expired := os.Getenv("JWT_EXPIRED")
 	if expired == "" {
@@ -24,13 +25,14 @@ func GenerateAccessToken(userId, role string) (string, error) {
 
 	duration, err := time.ParseDuration(expired)
 	if err != nil {
-		return "", errors.New("gagal parse JWT_EXPIRED")
+		return "", errors.New("Gagal parse JWT_EXPIRED")
 	}
 
 	claims := &Claims{
-		UserID: userId,
-		Role:   role,
-		Type:   "access",
+		UserID:    userId,
+		Role:      role,
+		UpdatedAt: updatedAt,
+		Type:      "access",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -41,7 +43,7 @@ func GenerateAccessToken(userId, role string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func GenerateRefreshToken(userID, role string, rememberMe bool) (string, error) {
+func GenerateRefreshToken(userID, role string, updatedAt int64, rememberMe bool) (string, error) {
 	secret := os.Getenv("REFRESH_TOKEN_SECRET")
 
 	duration := 24 * time.Hour
@@ -50,9 +52,10 @@ func GenerateRefreshToken(userID, role string, rememberMe bool) (string, error) 
 	}
 
 	claims := &Claims{
-		UserID: userID,
-		Role:   role,
-		Type:   "refresh",
+		UserID:    userID,
+		Role:      role,
+		UpdatedAt: updatedAt,
+		Type:      "refresh",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(duration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -78,12 +81,13 @@ func GenerateEmailVerificationToken(userID string) (string, error) {
 	return token.SignedString([]byte(secret))
 }
 
-func GenerateResetPasswordToken(userID string) (string, error) {
+func GenerateResetPasswordToken(userID string, updatedAt int64) (string, error) {
 	secret := os.Getenv("RESET_PASSWORD_SECRET")
 
 	claims := &Claims{
-		UserID: userID,
-		Type:   "reset_password",
+		UserID:    userID,
+		UpdatedAt: updatedAt,
+		Type:      "reset_password",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

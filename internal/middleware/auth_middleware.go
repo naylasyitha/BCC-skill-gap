@@ -3,13 +3,15 @@ package middleware
 import (
 	"net/http"
 	"os"
+	"project-bcc/internal/usecase"
 	"project-bcc/pkg/jwt"
+
 	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
-func AuthMiddleware() gin.HandlerFunc {
+func AuthMiddleware(authRepo usecase.AuthRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
@@ -30,6 +32,23 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		user, err := authRepo.FindByID(c.Request.Context(), claims.UserID)
+		if err != nil || user == nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Pengguna tidak ditemukan",
+			})
+			return
+		}
+
+		if claims.UpdatedAt < user.UpdatedAt.Unix() {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": "Token sudah tidak valid, silahkan login kembali",
+			})
+			return
+		}
+
 		c.Set("user_id", claims.UserID)
 		c.Set("role", claims.Role)
 		c.Next()
@@ -40,11 +59,10 @@ func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		role := c.GetString("role")
 		if role != "admin" {
-			c.JSON(http.StatusForbidden, gin.H{
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{
 				"success": false,
 				"message": "Akses ditolak, hanya admin yang diizinkan",
 			})
-			c.Abort()
 			return
 		}
 		c.Next()

@@ -11,18 +11,27 @@ import (
 
 type SelfAssessmentUsecase struct {
 	selfAssessmentRepository SelfAssessmentRepository
+	careerSessionRepo        CareerSessionRepository
 }
 
-func NewSelfAssessmentUsecase(repo SelfAssessmentRepository) *SelfAssessmentUsecase {
-	return &SelfAssessmentUsecase{selfAssessmentRepository: repo}
+func NewSelfAssessmentUsecase(repo SelfAssessmentRepository, careerSessionRepo CareerSessionRepository) *SelfAssessmentUsecase {
+	return &SelfAssessmentUsecase{selfAssessmentRepository: repo, careerSessionRepo: careerSessionRepo}
 }
 
-func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, careerSessionID string, req dto.SelfAssessmentRequest) (dto.SelfAssessmentResponse, error) {
-	var response dto.SelfAssessmentResponse
+func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, careerSessionID string, req dto.SelfAssessmentRequest) (*dto.SelfAssessmentResponse, error) {
 
 	careerSessionUUID, err := uuid.Parse(careerSessionID)
 	if err != nil {
-		return response, errors.New("Career Session ID tidak valid")
+		return nil, errors.New("Career Session ID tidak valid")
+	}
+
+	careerSession, err := s.careerSessionRepo.FindById(ctx, careerSessionID)
+	if err != nil {
+		return nil, errors.New("Career Session tidak ditemukan")
+	}
+
+	if careerSession.Status != entity.StatusEnum("on_assessment") {
+		return nil, errors.New("Status career session tidak sesuai untuk self assessment")
 	}
 
 	var skills []entity.SelfAssessmentSkill
@@ -30,7 +39,7 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 	for _, skillReq := range req.Skills {
 		skillUUID, err := uuid.Parse(skillReq.SkillID)
 		if err != nil {
-			return response, errors.New("Skill ID tidak valid")
+			return nil, errors.New("Skill ID tidak valid")
 		}
 
 		skills = append(skills, entity.SelfAssessmentSkill{
@@ -41,10 +50,16 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 	}
 
 	if err := s.selfAssessmentRepository.CreateAssessmentSession(ctx, skills); err != nil {
-		return response, err
+		return nil, err
+	}
+
+	if err = s.selfAssessmentRepository.UpdateStatus(ctx, careerSessionID, entity.StatusOnQuiz); err != nil {
+		return nil, err
 	}
 
 	// Langkah E: Kembalikan ID sesi yang berhasil dibuat ke dalam Response DTO
-	response.UserCareerSessionID = careerSessionUUID.String()
+	response := &dto.SelfAssessmentResponse{
+		UserCareerSessionID: careerSessionUUID.String(),
+	}
 	return response, nil
 }

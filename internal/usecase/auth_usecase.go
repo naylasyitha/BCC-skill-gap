@@ -12,6 +12,12 @@ import (
 	"project-bcc/pkg/jwt"
 )
 
+var (
+	ErrInvalidCredentials = errors.New("Email atau password salah")
+	ErrUnverifiedAccount  = errors.New("Akun belum diverifikasi, silakan cek email anda")
+	ErrInternalServer     = errors.New("Terjadi kesalahan pada server")
+)
+
 type AuthUsecase struct {
 	authRepo AuthRepository
 }
@@ -53,7 +59,7 @@ func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) er
 	err = email.SendVerificationEmail(user.Email, verificationLink, token)
 	if err != nil {
 		fmt.Println("EMAIL ERROR: ", err)
-		return errors.New("gagal mengirim email verifikasi" + err.Error())
+		return errors.New("Gagal mengirim email verifikasi" + err.Error())
 	}
 
 	return nil
@@ -63,32 +69,31 @@ func (au *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest) (*dto.Au
 
 	user, err := au.authRepo.FindByEmail(ctx, req.Email)
 	if err != nil || user == nil {
-		return nil, errors.New("email atau password salah")
+		return nil, ErrInvalidCredentials
 	}
 
 	if !user.IsVerified {
-		return nil, errors.New("akun belum diverifikasi, silakan cek email anda")
+		return nil, ErrUnverifiedAccount
 	}
 
 	if !bcrypt.CheckPassword(user.Password, req.Password) {
-		return nil, errors.New("email atau password salah")
+		return nil, ErrInvalidCredentials
 	}
 
-	accessToken, err := jwt.GenerateAccessToken(user.ID.String(), string(user.Role))
+	accessToken, err := jwt.GenerateAccessToken(user.ID.String(), string(user.Role), user.UpdatedAt.Unix())
 	if err != nil {
-		return nil, errors.New("gagal generate access token")
+		return nil, errors.New("Gagal generate access token")
 	}
 
-	refreshToken, err := jwt.GenerateRefreshToken(user.ID.String(), string(user.Role), req.RememberMe)
+	refreshToken, err := jwt.GenerateRefreshToken(user.ID.String(), string(user.Role), user.UpdatedAt.Unix(), req.RememberMe)
 	if err != nil {
-		return nil, errors.New("gagal generate refresh token")
+		return nil, errors.New("Gagal generate refresh token")
 	}
 
 	fmt.Println("ACCESS TOKEN: ", accessToken)
-	user.RefreshToken = refreshToken
-	err = au.authRepo.Update(ctx, user)
+	err = au.authRepo.UpdateRefreshToken(ctx, user.ID.String(), refreshToken)
 	if err != nil {
-		return nil, errors.New("gagal menyimpan refresh token")
+		return nil, errors.New("Gagal menyimpan refresh token")
 	}
 
 	return &dto.AuthResponse{
@@ -107,20 +112,20 @@ func (au *AuthUsecase) VerifyEmail(ctx context.Context, req dto.VerifyEmailReque
 
 	claims, err := jwt.ValidateToken(req.Token, os.Getenv("EMAIL_VERIFY_SECRET"))
 	if err != nil {
-		return errors.New("token verifikasi tidak valid atau sudah kedaluwarsa")
+		return errors.New("Token verifikasi tidak valid atau sudah kedaluwarsa")
 	}
 
 	if claims.Type != "email_verification" {
-		return errors.New("tipe token tidak valid")
+		return errors.New("Tipe token tidak valid")
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return errors.New("user tidak ditemukan")
+		return errors.New("User tidak ditemukan")
 	}
 
 	if user.IsVerified {
-		return errors.New("email sudah diverifikasi")
+		return errors.New("Email sudah diverifikasi")
 	}
 
 	user.IsVerified = true
@@ -131,16 +136,16 @@ func (au *AuthUsecase) ResendVerification(ctx context.Context, req dto.ResendVer
 
 	user, err := au.authRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return errors.New("user tidak ditemukan")
+		return errors.New("User tidak ditemukan")
 	}
 
 	if user.IsVerified {
-		return errors.New("email sudah diverifikasi")
+		return errors.New("Email sudah diverifikasi")
 	}
 
 	token, err := jwt.GenerateEmailVerificationToken(user.ID.String())
 	if err != nil {
-		return errors.New("gagal generate token")
+		return errors.New("Gagal generate token")
 	}
 
 	fmt.Println("RESEND EMAIL TOKEN: ", token)
@@ -156,12 +161,12 @@ func (au *AuthUsecase) ForgotPassword(ctx context.Context, req dto.ForgotPasswor
 
 	user, err := au.authRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return errors.New("user tidak ditemukan")
+		return errors.New("User tidak ditemukan")
 	}
 
-	token, err := jwt.GenerateResetPasswordToken(user.ID.String())
+	token, err := jwt.GenerateResetPasswordToken(user.ID.String(), user.UpdatedAt.Unix())
 	if err != nil {
-		return errors.New("gagal generate token")
+		return errors.New("Gagal generate token")
 	}
 
 	fmt.Println("FORGET PASSWORD TOKEN: ", token)
@@ -175,24 +180,29 @@ func (au *AuthUsecase) ResetPassword(ctx context.Context, req dto.ResetPasswordR
 
 	claims, err := jwt.ValidateToken(req.Token, os.Getenv("RESET_PASSWORD_SECRET"))
 	if err != nil {
-		return errors.New("token tidak valid atau sudah kedaluwarsa")
+		return errors.New("Token tidak valid atau sudah kedaluwarsa")
 	}
 
 	if claims.Type != "reset_password" {
-		return errors.New("tipe token tidak valid")
+		return errors.New("Tipe token tidak valid")
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return errors.New("user tidak ditemukan")
+		return errors.New("User tidak ditemukan")
+	}
+
+	if claims.UpdatedAt < user.UpdatedAt.Unix() {
+		return errors.New("Token tidak valid atau sudah kedaluwarsa")
 	}
 
 	hashedPassword, err := bcrypt.HashPassword(req.Password)
 	if err != nil {
-		return errors.New("gagal hash password")
+		return errors.New("Gagal hash password")
 	}
 
 	user.Password = hashedPassword
+	user.RefreshToken = ""
 	return au.authRepo.Update(ctx, user)
 }
 
@@ -200,25 +210,29 @@ func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.R
 
 	claims, err := jwt.ValidateToken(refreshToken, os.Getenv("REFRESH_TOKEN_SECRET"))
 	if err != nil {
-		return nil, errors.New("refresh token tidak valid atau kedaluwarsa")
+		return nil, errors.New("Refresh token tidak valid atau kedaluwarsa")
 	}
 
 	if claims.Type != "refresh" {
-		return nil, errors.New("tipe token tidak valid")
+		return nil, errors.New("Tipe token tidak valid")
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return nil, errors.New("user tidak ditemukan")
+		return nil, errors.New("User tidak ditemukan")
 	}
 
 	if user.RefreshToken != refreshToken {
-		return nil, errors.New("refresh token tidak sesuai")
+		return nil, errors.New("Refresh token tidak sesuai")
 	}
 
-	accessToken, err := jwt.GenerateAccessToken(user.ID.String(), string(user.Role))
+	if claims.UpdatedAt < user.UpdatedAt.Unix() {
+		return nil, errors.New("Refresh token sudah tidak valid, silahkan login kembali")
+	}
+
+	accessToken, err := jwt.GenerateAccessToken(user.ID.String(), string(user.Role), user.UpdatedAt.Unix())
 	if err != nil {
-		return nil, errors.New("gagal generate access token")
+		return nil, errors.New("Gagal generate access token")
 	}
 
 	return &dto.RefreshResponse{

@@ -3,6 +3,7 @@ package router
 import (
 	"project-bcc/internal/adapter/handler"
 	"project-bcc/internal/middleware"
+	"project-bcc/internal/usecase"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -16,6 +17,7 @@ type Router struct {
 	quizHandler          *handler.QuizHandler
 	careerSessionHandler *handler.CareerSessionHandler
 	questionHandler      *handler.QuestionHandler
+	authRepo             usecase.AuthRepository
 }
 
 func NewRouter(
@@ -26,6 +28,7 @@ func NewRouter(
 	qu *handler.QuizHandler,
 	cs *handler.CareerSessionHandler,
 	que *handler.QuestionHandler,
+	ar usecase.AuthRepository,
 ) *Router {
 	return &Router{
 		authHandler:          ah,
@@ -35,6 +38,7 @@ func NewRouter(
 		quizHandler:          qu,
 		careerSessionHandler: cs,
 		questionHandler:      que,
+		authRepo:             ar,
 	}
 }
 
@@ -68,7 +72,7 @@ func (r *Router) SetupRouter() *gin.Engine {
 		auth.POST("/reset-password", r.authHandler.ResetPassword)
 	}
 
-	api.Use(middleware.AuthMiddleware())
+	api.Use(middleware.AuthMiddleware(r.authRepo))
 
 	career := api.Group("/careers")
 	{

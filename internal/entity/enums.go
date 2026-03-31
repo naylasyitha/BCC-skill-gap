@@ -20,7 +20,10 @@ const (
 	LevelIntermediate LevelEnum = "intermediate"
 	LevelExpert       LevelEnum = "expert"
 
-	StatusComplete   StatusEnum = "complete"
-	StatusOnProcess  StatusEnum = "on_process"
-	StatusNotStarted StatusEnum = "not_started"
+	StatusNotStarted   StatusEnum = "not_started"
+	StatusOnProcess    StatusEnum = "on_process"
+	StatusOnAssessment StatusEnum = "on_assessment"
+	StatusOnQuiz       StatusEnum = "on_quiz"
+	StatusOnLearning   StatusEnum = "on_learning"
+	StatusComplete     StatusEnum = "complete"
 )

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"os"
 	"project-bcc/dto"
@@ -58,7 +59,22 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	result, err := h.authUsecase.Login(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+		if errors.Is(err, usecase.ErrUnverifiedAccount) {
+			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -73,7 +89,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 
 	c.SetSameSite(http.SameSiteNoneMode)
 	c.SetCookie("refresh_token", result.RefreshToken, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", true)
-	c.SetCookie("role", result.User.Role, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", false)
+	c.SetCookie("role", result.User.Role, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,

@@ -10,6 +10,7 @@ type AuthRepository interface {
 	FindByID(ctx context.Context, id string) (*entity.User, error)
 	Save(ctx context.Context, user *entity.User) error
 	Update(ctx context.Context, user *entity.User) error
+	UpdateRefreshToken(ctx context.Context, id string, token string) error
 }
 
 type CareerRepository interface {
@@ -44,6 +45,7 @@ type CareerSessionRepository interface {
 
 type SelfAssessmentRepository interface {
 	CreateAssessmentSession(ctx context.Context, skills []entity.SelfAssessmentSkill) error
+	UpdateStatus(ctx context.Context, careerSessionID string, status entity.StatusEnum) error
 }
 
 type QuizRepository interface {

@@ -31,7 +31,7 @@ func main() {
 	authUsecase := usecase.NewAuthUsecase(authRepo)
 	careerUsecase := usecase.NewCareerUsecase(careerRepo, skillRepo)
 	skillUsecase := usecase.NewSkillUsecase(skillRepo, careerSkillRepo)
-	selfAssessmentUsecase := usecase.NewSelfAssessmentUsecase(selfAssesmentRepo)
+	selfAssessmentUsecase := usecase.NewSelfAssessmentUsecase(selfAssesmentRepo, careerSessionRepo)
 	quizUsecase := usecase.NewQuizUsecase(quizRepo)
 	careerSessionUsecase := usecase.NewCareerSessionUsecase(careerSessionRepo, careerRepo)
 	questionUsecase := usecase.NewQuestionUsecase(questionRepo, skillRepo)
@@ -44,7 +44,7 @@ func main() {
 	careerSessionHandler := handler.NewCareerSessionHandler(careerSessionUsecase)
 	questionHandler := handler.NewQuestionHandler(questionUsecase)
 
-	r := router.NewRouter(authHandler, careerHandler, skillHandler, selfAssesmentHandler, quizHandler, careerSessionHandler, questionHandler)
+	r := router.NewRouter(authHandler, careerHandler, skillHandler, selfAssesmentHandler, quizHandler, careerSessionHandler, questionHandler, authRepo)
 
 	app := r.SetupRouter()
 
