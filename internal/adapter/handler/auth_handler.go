@@ -87,9 +87,15 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		maxAgeRefresh = 7 * 24 * 3600
 	}
 
-	c.SetSameSite(http.SameSiteNoneMode)
-	c.SetCookie("refresh_token", result.RefreshToken, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", true)
-	c.SetCookie("role", result.User.Role, maxAgeRefresh, "/", "", os.Getenv("APP_ENV") == "production", true)
+	isProd := os.Getenv("APP_ENV") == "production"
+	sameSite := http.SameSiteLaxMode
+	if isProd {
+		sameSite = http.SameSiteNoneMode
+	}
+
+	c.SetSameSite(sameSite)
+	c.SetCookie("refresh_token", result.RefreshToken, maxAgeRefresh, "/", "", isProd, true)
+	c.SetCookie("role", result.User.Role, maxAgeRefresh, "/", "", isProd, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
