@@ -39,8 +39,8 @@ func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID 
 		if err != nil {
 			return nil, errors.New("Gagal menghitung batas karir")
 		}
-		if count >= 3 {
-			return nil, errors.New("Gagal menambah karir, karir sudah mencapai batas. Silahkan upgrade menjadi premium untuk memilih karir lebih banyak.")
+		if count == 2 {
+			return nil, errors.New("Gagal menambah karir, karir sudah mencapai batas memilih 2 karir. Silahkan upgrade menjadi premium untuk memilih karir lebih banyak.")
 		}
 	}
 
@@ -102,5 +102,59 @@ func (cs *CareerSessionUsecase) GetCareerSession(ctx context.Context, careerSess
 		Status:      string(careerSession.Status),
 		StartedAt:   careerSession.StartedAt.Format(time.RFC3339),
 		CompletedAt: completedAt,
+	}, nil
+}
+
+func (cs *CareerSessionUsecase) GetAllCareerSession(ctx context.Context, userID string) ([]dto.CareerSessionListResponse, error) {
+	careerSessions, err := cs.careerSessionRepo.GetAllCareerSession(ctx, userID)
+	if err != nil {
+		return nil, errors.New("Career Session tidak ditemukan")
+	}
+
+	//agar return array kosong bukan nil jika careerSession tidak ada
+	responses := []dto.CareerSessionListResponse{}
+	for _, careerSession := range careerSessions {
+		responses = append(responses, dto.CareerSessionListResponse{
+			CareerSessionID: careerSession.ID.String(),
+			CareerID:        careerSession.CareerID.String(),
+			CareerName:      careerSession.Career.Name,
+			Status:          string(careerSession.Status),
+		})
+	}
+	return responses, nil
+}
+
+func (cs *CareerSessionUsecase) GetDashboardAnalytics(ctx context.Context, careerSessionID string) (*dto.CareerAnalyticResponse, error) {
+	assessments, err := cs.careerSessionRepo.GetAnalyticsData(ctx, careerSessionID)
+	if err != nil {
+		return nil, errors.New("Gagal mengambil data analitik")
+	}
+
+	var totalScore int
+	result := []dto.SkillAnalyticResponse{}
+
+	for _, a := range assessments {
+		skillPercentage := (float64(a.QuizScore) / 20.0) * 100.0
+		totalScore += a.QuizScore
+
+		result = append(result, dto.SkillAnalyticResponse{
+			SkillID:    a.SkillID.String(),
+			SkillName:  a.Skill.Name,
+			UserLevel:  string(a.UserLevel),
+			FinalLevel: string(a.UserFinalLevel),
+			SkillScore: int(skillPercentage),
+		})
+	}
+
+	totalMaxScore := len(assessments) * 20
+	totalPercentage := 0.0
+	if totalMaxScore > 0 {
+		totalPercentage = (float64(totalScore) / float64(totalMaxScore)) * 100.0
+	}
+
+	return &dto.CareerAnalyticResponse{
+		CareerSessionID: careerSessionID,
+		TotalScore:      int(totalPercentage),
+		SkillsResult:    result,
 	}, nil
 }

@@ -51,3 +51,7 @@ func (r *authRepository) UpdateRefreshToken(ctx context.Context, id string, toke
 		Where("id = ?", id).
 		UpdateColumn("refresh_token", token).Error
 }
+
+func (r *authRepository) Delete(ctx context.Context, id string) error {
+	return r.db.WithContext(ctx).Delete(&entity.User{}, "id = ?", id).Error
+}

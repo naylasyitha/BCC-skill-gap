@@ -42,6 +42,10 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 			return nil, errors.New("Skill ID tidak valid")
 		}
 
+		if skillReq.UserLevel == "" {
+			skillReq.UserLevel = string(entity.LevelNoExperience)
+		}
+
 		skills = append(skills, entity.SelfAssessmentSkill{
 			UserCareerSessionID: careerSessionUUID,
 			SkillID:             skillUUID,
@@ -57,7 +61,6 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 		return nil, err
 	}
 
-	// Langkah E: Kembalikan ID sesi yang berhasil dibuat ke dalam Response DTO
 	response := &dto.SelfAssessmentResponse{
 		UserCareerSessionID: careerSessionUUID.String(),
 	}

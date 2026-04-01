@@ -23,3 +23,10 @@ type CareerSessionDetailResponse struct {
 	StartedAt   string `json:"started_at"`
 	CompletedAt string `json:"completed_at"`
 }
+
+type CareerSessionListResponse struct {
+	CareerSessionID string `json:"career_session_id"`
+	CareerID        string `json:"career_id"`
+	CareerName      string `json:"career_name"`
+	Status          string `json:"status"`
+}

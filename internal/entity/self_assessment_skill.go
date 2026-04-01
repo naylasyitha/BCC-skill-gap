@@ -13,6 +13,7 @@ type SelfAssessmentSkill struct {
 	Skill               Skill
 	UserLevel           LevelEnum `gorm:"type:varchar(50)"`
 	UserFinalLevel      LevelEnum `gorm:"type:varchar(50)"`
+	QuizScore           int       `gorm:"default:0"`
 }
 
 func (s *SelfAssessmentSkill) BeforeCreate(tx *gorm.DB) error {

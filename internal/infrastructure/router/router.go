@@ -17,6 +17,7 @@ type Router struct {
 	quizHandler          *handler.QuizHandler
 	careerSessionHandler *handler.CareerSessionHandler
 	questionHandler      *handler.QuestionHandler
+	userHandler          *handler.UserHandler
 	authRepo             usecase.AuthRepository
 }
 
@@ -28,6 +29,7 @@ func NewRouter(
 	qu *handler.QuizHandler,
 	cs *handler.CareerSessionHandler,
 	que *handler.QuestionHandler,
+	us *handler.UserHandler,
 	ar usecase.AuthRepository,
 ) *Router {
 	return &Router{
@@ -38,6 +40,7 @@ func NewRouter(
 		quizHandler:          qu,
 		careerSessionHandler: cs,
 		questionHandler:      que,
+		userHandler:          us,
 		authRepo:             ar,
 	}
 }
@@ -82,6 +85,13 @@ func (r *Router) SetupRouter() *gin.Engine {
 
 	api.Use(middleware.AuthMiddleware(r.authRepo))
 
+	profile := api.Group("/users")
+	{
+		profile.GET("/profile", r.userHandler.GetUserData)
+		profile.PATCH("/profile", r.userHandler.UserUpdateData)
+		profile.DELETE("/profile", r.userHandler.DeleteUserData)
+	}
+
 	careerPrivate := api.Group("/careers")
 	{
 		careerPrivate.POST("", middleware.AdminMiddleware(), r.careerHandler.CreateCareer)
@@ -114,9 +124,14 @@ func (r *Router) SetupRouter() *gin.Engine {
 	careerSession := api.Group("/career-sessions")
 	{
 		careerSession.POST("", r.careerSessionHandler.Create)
+		careerSession.GET("", r.careerSessionHandler.GetAllCareerSession)
 		careerSession.GET("/:careerSessionId", r.careerSessionHandler.GetCareerSession)
 		careerSession.POST("/:careerSessionId/assessment", r.selfAssessment.SubmitAssessment)
-		careerSession.POST("/quiz/:careerSessionId/start", r.quizHandler.StartQuiz)
+		careerSession.POST("/:careerSessionId/quiz/start", r.quizHandler.StartQuiz)
+		careerSession.PATCH("/quiz/:quizSessionId/answer", r.quizHandler.UpdateAnswer)
+		careerSession.POST("/quiz/:quizSessionId/submit", r.quizHandler.SubmitQuiz)
+		careerSession.GET("/:careerSessionId/analytics", r.careerSessionHandler.GetDashboardAnalytics)
+
 	}
 
 	//konsep awal untuk cadangan just in case

@@ -11,6 +11,7 @@ type AuthRepository interface {
 	Save(ctx context.Context, user *entity.User) error
 	Update(ctx context.Context, user *entity.User) error
 	UpdateRefreshToken(ctx context.Context, id string, token string) error
+	Delete(ctx context.Context, id string) error
 }
 
 type CareerRepository interface {
@@ -42,6 +43,8 @@ type CareerSessionRepository interface {
 	Create(ctx context.Context, session *entity.UserCareerSession) error
 	FindById(ctx context.Context, careerSessionId string) (*entity.UserCareerSession, error)
 	CountByUserID(ctx context.Context, userID string) (int, error)
+	GetAllCareerSession(ctx context.Context, userID string) ([]entity.UserCareerSession, error)
+	GetAnalyticsData(ctx context.Context, careerSessionID string) ([]entity.SelfAssessmentSkill, error)
 }
 
 type SelfAssessmentRepository interface {
@@ -51,8 +54,13 @@ type SelfAssessmentRepository interface {
 
 type QuizRepository interface {
 	GetSelfAssessmentSkillsBySession(ctx context.Context, sessionID string) ([]entity.SelfAssessmentSkill, error)
-	GetRandomQuestionBySkillAndLevel(ctx context.Context, skillID string, level entity.LevelEnum) (*entity.Question, error)
+	GetRandomQuestionBySkillAndLevel(ctx context.Context, skillID string, level entity.LevelEnum, limit int) ([]entity.Question, error)
 	CreateQuizTransaction(ctx context.Context, quizSession *entity.QuizSession, quizAnswers []entity.QuizAnswer) error
+	UpdateQuizAnswer(ctx context.Context, quizSessionID string, quizAnswerID string, userAnswer string) error
+	GetAnswerWithQuestions(ctx context.Context, quizSessionID string) ([]entity.QuizAnswer, error)
+	SubmitQuizTransaction(ctx context.Context, quizSessionID string, careerSessionID string, totalScore int, updatedSkill []entity.SelfAssessmentSkill, updatedAnswers []entity.QuizAnswer) error
+	GetQuizSessionStatus(ctx context.Context, careerSessionID string) (*entity.QuizSession, error)
+	Delete(ctx context.Context, quizSessionID string) error
 }
 
 type QuestionRepository interface {

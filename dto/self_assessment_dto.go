@@ -6,7 +6,7 @@ type SelfAssessmentRequest struct {
 
 type SkillLevelRequest struct {
 	SkillID   string `json:"skill_id" binding:"required,uuid"`
-	UserLevel string `json:"user_level" binding:"required"`
+	UserLevel string `json:"user_level"`
 }
 
 type SelfAssessmentResponse struct {
