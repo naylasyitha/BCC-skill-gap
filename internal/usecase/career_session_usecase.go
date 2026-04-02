@@ -3,11 +3,19 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrCareerSessionNotFound = errors.New("Career Session tidak ditemukan")
+	ErrCareerLimitReached    = errors.New("Karir sudah mencapai batas memilih 2 karir. Silahkan upgrade menjadi premium.")
 )
 
 type CareerSessionUsecase struct {
@@ -28,35 +36,78 @@ func NewCareerSessionUsecase(
 	}
 }
 
+func getLevelString(levelInt int) string {
+	switch levelInt {
+	case 0:
+		return "no_experience"
+	case 1:
+		return "beginner"
+	case 2:
+		return "intermediate"
+	case 3:
+		return "expert"
+	default:
+		return ""
+	}
+}
+
+func getLevelInt(levelString string) int {
+	switch levelString {
+	case "no_experience":
+		return 0
+	case "beginner":
+		return 1
+	case "intermediate":
+		return 2
+	case "expert":
+		return 3
+	default:
+		return -1
+	}
+}
+
 func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID string, req dto.CareerSessionCreateRequest) (*dto.CareerSessionResponse, error) {
-	user, err := cs.authRepo.FindByID(ctx, userID)
-	if err != nil || user == nil {
-		return nil, errors.New("User tidak ditemukan")
+	userUUID, err := uuid.Parse(userID)
+	if err != nil {
+		return nil, errors.New("Format User ID tidak valid")
+	}
+
+	user, err := cs.authRepo.FindByID(ctx, userUUID.String())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || user == nil {
+			return nil, ErrUserNotFound
+		}
+		fmt.Println("Gagal mengambil data user saat CreateCareerSession:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	if !user.IsPremium {
 		count, err := cs.careerSessionRepo.CountByUserID(ctx, user.ID.String())
 		if err != nil {
-			return nil, errors.New("Gagal menghitung batas karir")
+			fmt.Println("Gagal menghitung jumlah CareerSession:", err.Error())
+			return nil, ErrInternalServer
 		}
-		if count == 2 {
-			return nil, errors.New("Gagal menambah karir, karir sudah mencapai batas memilih 2 karir. Silahkan upgrade menjadi premium untuk memilih karir lebih banyak.")
+		if count >= 2 {
+			return nil, ErrCareerLimitReached
 		}
 	}
-
-	_, err = cs.careerRepo.FindById(ctx, req.CareerID)
-	if err != nil {
-		return nil, errors.New("Karir tidak ditemukan")
-	}
-	userUUID := user.ID
 
 	careerUUID, err := uuid.Parse(req.CareerID)
 	if err != nil {
 		return nil, errors.New("Format ID karir tidak valid")
 	}
 
+	_, err = cs.careerRepo.FindById(ctx, careerUUID.String())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found") {
+			return nil, ErrCareerNotFound
+		}
+		fmt.Println("Gagal mencari Karir saat CreateCareerSession:", err.Error())
+		return nil, ErrInternalServer
+	}
+
 	sessions := &entity.UserCareerSession{
-		UserID:    userUUID,
+		UserID:    user.ID,
 		CareerID:  careerUUID,
 		Status:    entity.StatusOnAssessment,
 		StartedAt: time.Now(),
@@ -64,7 +115,8 @@ func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID 
 
 	err = cs.careerSessionRepo.Create(ctx, sessions)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan Career Session:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	completedAt := ""
@@ -83,9 +135,18 @@ func (cs *CareerSessionUsecase) CreateCareerSession(ctx context.Context, userID 
 }
 
 func (cs *CareerSessionUsecase) GetCareerSession(ctx context.Context, careerSessionID string) (*dto.CareerSessionDetailResponse, error) {
-	careerSession, err := cs.careerSessionRepo.FindById(ctx, careerSessionID)
+	careerSessionUUID, err := uuid.Parse(careerSessionID)
 	if err != nil {
-		return nil, errors.New("Career Session tidak ditemukan")
+		return nil, errors.New("Format Career Session ID tidak valid")
+	}
+
+	careerSession, err := cs.careerSessionRepo.FindById(ctx, careerSessionUUID.String())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found") {
+			return nil, ErrCareerSessionNotFound
+		}
+		fmt.Println("Gagal mencari Career Session Detail:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	completedAt := ""
@@ -106,12 +167,16 @@ func (cs *CareerSessionUsecase) GetCareerSession(ctx context.Context, careerSess
 }
 
 func (cs *CareerSessionUsecase) GetAllCareerSession(ctx context.Context, userID string) ([]dto.CareerSessionListResponse, error) {
-	careerSessions, err := cs.careerSessionRepo.GetAllCareerSession(ctx, userID)
+	userUUID, err := uuid.Parse(userID)
 	if err != nil {
-		return nil, errors.New("Career Session tidak ditemukan")
+		return nil, errors.New("Format User ID tidak valid")
+	}
+	careerSessions, err := cs.careerSessionRepo.GetAllCareerSession(ctx, userUUID.String())
+	if err != nil {
+		fmt.Println("Gagal mengambil daftar Career Session:", err.Error())
+		return nil, ErrInternalServer
 	}
 
-	//agar return array kosong bukan nil jika careerSession tidak ada
 	responses := []dto.CareerSessionListResponse{}
 	for _, careerSession := range careerSessions {
 		responses = append(responses, dto.CareerSessionListResponse{
@@ -125,24 +190,68 @@ func (cs *CareerSessionUsecase) GetAllCareerSession(ctx context.Context, userID 
 }
 
 func (cs *CareerSessionUsecase) GetDashboardAnalytics(ctx context.Context, careerSessionID string) (*dto.CareerAnalyticResponse, error) {
-	assessments, err := cs.careerSessionRepo.GetAnalyticsData(ctx, careerSessionID)
+	careerSessionUUID, err := uuid.Parse(careerSessionID)
 	if err != nil {
-		return nil, errors.New("Gagal mengambil data analitik")
+		return nil, errors.New("Format Career Session ID tidak valid")
+	}
+	assessments, err := cs.careerSessionRepo.GetAnalyticsData(ctx, careerSessionUUID.String())
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("Data analitik tidak ditemukan untuk sesi ini")
+		}
+		fmt.Println("Gagal mengambil data analitik:", err.Error())
+		return nil, ErrInternalServer
+	}
+
+	careerSkills, err := cs.careerSessionRepo.GetRequiredLevel(ctx, careerSessionUUID.String())
+	if err != nil {
+		fmt.Println("Gagal mengambil data required level industri:", err.Error())
+		return nil, ErrInternalServer
+	}
+
+	industryLevel := make(map[string]string)
+	for _, required := range careerSkills {
+		industryLevel[required.SkillID.String()] = string(required.RequiredLevel)
 	}
 
 	var totalScore int
 	result := []dto.SkillAnalyticResponse{}
 
 	for _, a := range assessments {
+		skillID := a.SkillID.String()
+
 		skillPercentage := (float64(a.QuizScore) / 20.0) * 100.0
 		totalScore += a.QuizScore
 
+		requiredLevel := industryLevel[skillID]
+		if requiredLevel == "" {
+			requiredLevel = "beginner"
+		}
+
+		userLevelInt := getLevelInt(string(a.UserFinalLevel))
+		reqLevelInt := getLevelInt(requiredLevel)
+		gap := reqLevelInt - userLevelInt
+
+		status := "Kemampuan anda masih kurang, Perlu ditingkatkan kembali!"
+		var suggestion []string
+		if gap <= 0 {
+			status = "Selamat! kemampuan anda sudah sesuai dengan standar industri"
+		} else {
+			for i := userLevelInt + 1; i <= reqLevelInt; i++ {
+				suggestion = append(suggestion, getLevelString(i))
+			}
+		}
+
 		result = append(result, dto.SkillAnalyticResponse{
-			SkillID:    a.SkillID.String(),
-			SkillName:  a.Skill.Name,
-			UserLevel:  string(a.UserLevel),
-			FinalLevel: string(a.UserFinalLevel),
-			SkillScore: int(skillPercentage),
+			SkillID:         a.SkillID.String(),
+			SkillName:       a.Skill.Name,
+			UserLevel:       string(a.UserLevel),
+			FinalLevel:      string(a.UserFinalLevel),
+			RequiredLevel:   requiredLevel,
+			SkillScore:      int(skillPercentage),
+			GapLevel:        gap,
+			Status:          status,
+			SuggestionLevel: suggestion,
 		})
 	}
 

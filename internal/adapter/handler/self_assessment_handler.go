@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
@@ -28,9 +29,7 @@ func (s *SelfAssessmentHandler) SubmitAssessment(c *gin.Context) {
 	}
 
 	var req dto.SelfAssessmentRequest
-	err := c.ShouldBindJSON(&req)
-
-	if err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -40,7 +39,23 @@ func (s *SelfAssessmentHandler) SubmitAssessment(c *gin.Context) {
 
 	res, err := s.selfAssessmentUsecase.ProcessSelfAssessment(c.Request.Context(), careersessionID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "Status career session tidak sesuai") {
+		if strings.Contains(strings.ToLower(err.Error()), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrCareerSessionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidSessionStatus) {
 			c.JSON(http.StatusForbidden, gin.H{
 				"success": false,
 				"message": err.Error(),
@@ -50,7 +65,7 @@ func (s *SelfAssessmentHandler) SubmitAssessment(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Terjadi error pada internal server",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -60,5 +75,4 @@ func (s *SelfAssessmentHandler) SubmitAssessment(c *gin.Context) {
 		"message": "Self Assessment berhasil disubmit",
 		"data":    res,
 	})
-
 }

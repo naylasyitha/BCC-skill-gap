@@ -45,6 +45,7 @@ type CareerSessionRepository interface {
 	CountByUserID(ctx context.Context, userID string) (int, error)
 	GetAllCareerSession(ctx context.Context, userID string) ([]entity.UserCareerSession, error)
 	GetAnalyticsData(ctx context.Context, careerSessionID string) ([]entity.SelfAssessmentSkill, error)
+	GetRequiredLevel(ctx context.Context, careerSessionID string) ([]entity.CareerSkill, error)
 }
 
 type SelfAssessmentRepository interface {

@@ -3,10 +3,17 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
+	"strings"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrInvalidSessionStatus = errors.New("Status career session tidak sesuai untuk self assessment")
 )
 
 type SelfAssessmentUsecase struct {
@@ -22,16 +29,20 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 
 	careerSessionUUID, err := uuid.Parse(careerSessionID)
 	if err != nil {
-		return nil, errors.New("Career Session ID tidak valid")
+		return nil, errors.New("Format Career Session ID tidak valid")
 	}
 
-	careerSession, err := s.careerSessionRepo.FindById(ctx, careerSessionID)
+	careerSession, err := s.careerSessionRepo.FindById(ctx, careerSessionUUID.String())
 	if err != nil {
-		return nil, errors.New("Career Session tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) || strings.Contains(strings.ToLower(err.Error()), "not found") {
+			return nil, ErrCareerSessionNotFound
+		}
+		fmt.Println("Gagal mengambil data Career Session:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	if careerSession.Status != entity.StatusEnum("on_assessment") {
-		return nil, errors.New("Status career session tidak sesuai untuk self assessment")
+		return nil, ErrInvalidSessionStatus
 	}
 
 	var skills []entity.SelfAssessmentSkill
@@ -39,7 +50,7 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 	for _, skillReq := range req.Skills {
 		skillUUID, err := uuid.Parse(skillReq.SkillID)
 		if err != nil {
-			return nil, errors.New("Skill ID tidak valid")
+			return nil, errors.New("Format Skill ID tidak valid")
 		}
 
 		if skillReq.UserLevel == "" {
@@ -54,11 +65,13 @@ func (s *SelfAssessmentUsecase) ProcessSelfAssessment(ctx context.Context, caree
 	}
 
 	if err := s.selfAssessmentRepository.CreateAssessmentSession(ctx, skills); err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan Self Assessment ke database:", err.Error())
+		return nil, ErrInternalServer
 	}
 
-	if err = s.selfAssessmentRepository.UpdateStatus(ctx, careerSessionID, entity.StatusOnQuiz); err != nil {
-		return nil, err
+	if err = s.selfAssessmentRepository.UpdateStatus(ctx, careerSessionUUID.String(), entity.StatusOnQuiz); err != nil {
+		fmt.Println("Gagal update status Career Session ke on_quiz:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	response := &dto.SelfAssessmentResponse{

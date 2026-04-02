@@ -7,9 +7,13 @@ type CareerAnalyticResponse struct {
 }
 
 type SkillAnalyticResponse struct {
-	SkillID    string `json:"skill_id"`
-	SkillName  string `json:"skill_name"`
-	UserLevel  string `json:"user_level"`
-	FinalLevel string `json:"final_user_level"`
-	SkillScore int    `json:"skill_score"`
+	SkillID         string   `json:"skill_id"`
+	SkillName       string   `json:"skill_name"`
+	UserLevel       string   `json:"user_level"`
+	FinalLevel      string   `json:"final_user_level"`
+	RequiredLevel   string   `json:"required_level"`
+	SkillScore      int      `json:"skill_score"`
+	GapLevel        int      `json:"gap_level"`
+	Status          string   `json:"status"`
+	SuggestionLevel []string `json:"suggestion_level"`
 }

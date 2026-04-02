@@ -3,10 +3,16 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
+)
+
+var (
+	ErrQuestionNotFound = errors.New("Question tidak ditemukan")
 )
 
 type QuestionUsecase struct {
@@ -24,12 +30,16 @@ func NewQuestionUsecase(questRepo QuestionRepository, skill SkillRepository) *Qu
 func (u *QuestionUsecase) CreateQuestion(ctx context.Context, req dto.QuestionCreateRequest) (*dto.QuestionResponse, error) {
 	skillUUID, err := uuid.Parse(req.SkillID)
 	if err != nil {
-		return nil, errors.New("Skill ID tidak valid")
+		return nil, errors.New("Format Skill ID tidak valid")
 	}
 
 	_, err = u.skillRepo.FindById(ctx, req.SkillID)
 	if err != nil {
-		return nil, errors.New("Skill tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrSkillNotFound
+		}
+		fmt.Println("Gagal query skill saat CreateQuestion:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	explanation := req.Explanation
@@ -52,7 +62,8 @@ func (u *QuestionUsecase) CreateQuestion(ctx context.Context, req dto.QuestionCr
 
 	err = u.questionRepo.Create(ctx, newQuestion)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan Question:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.QuestionResponse{
@@ -72,10 +83,11 @@ func (u *QuestionUsecase) CreateQuestion(ctx context.Context, req dto.QuestionCr
 func (u *QuestionUsecase) GetAllQuestion(ctx context.Context) ([]dto.QuestionResponse, error) {
 	questions, err := u.questionRepo.FindAll(ctx)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal mengambil semua Question:", err.Error())
+		return nil, ErrInternalServer
 	}
+	responses := []dto.QuestionResponse{}
 
-	var responses []dto.QuestionResponse
 	for _, question := range questions {
 		responses = append(responses, dto.QuestionResponse{
 			ID:              question.ID.String(),
@@ -90,13 +102,18 @@ func (u *QuestionUsecase) GetAllQuestion(ctx context.Context) ([]dto.QuestionRes
 			Explanation:     question.Explanation,
 		})
 	}
+
 	return responses, nil
 }
 
 func (u *QuestionUsecase) GetQuestionById(ctx context.Context, id string) (*dto.QuestionResponse, error) {
 	question, err := u.questionRepo.FindById(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrQuestionNotFound
+		}
+		fmt.Println("Gagal mengambil Question by ID:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.QuestionResponse{
@@ -116,7 +133,11 @@ func (u *QuestionUsecase) GetQuestionById(ctx context.Context, id string) (*dto.
 func (u *QuestionUsecase) UpdateQuestion(ctx context.Context, id string, req dto.QuestionUpdateRequest) (*dto.QuestionResponse, error) {
 	question, err := u.questionRepo.FindById(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrQuestionNotFound
+		}
+		fmt.Println("Gagal mencari Question saat update:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	if req.Level != "" {
@@ -146,7 +167,8 @@ func (u *QuestionUsecase) UpdateQuestion(ctx context.Context, id string, req dto
 
 	err = u.questionRepo.Update(ctx, question)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan update Question:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.QuestionResponse{
@@ -166,12 +188,17 @@ func (u *QuestionUsecase) UpdateQuestion(ctx context.Context, id string, req dto
 func (u *QuestionUsecase) DeleteQuestion(ctx context.Context, id string) error {
 	_, err := u.questionRepo.FindById(ctx, id)
 	if err != nil {
-		return errors.New("Question tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrQuestionNotFound
+		}
+		fmt.Println("Gagal mencari Question saat delete:", err.Error())
+		return ErrInternalServer
 	}
 
 	err = u.questionRepo.Delete(ctx, id)
 	if err != nil {
-		return err
+		fmt.Println("Gagal menghapus Question:", err.Error())
+		return ErrInternalServer
 	}
 	return nil
 }

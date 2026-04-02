@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
@@ -38,8 +39,24 @@ func (h *CareerSessionHandler) Create(c *gin.Context) {
 
 	res, err := h.careerSessionUsecase.CreateCareerSession(c.Request.Context(), userID.(string), req)
 	if err != nil {
-		if strings.Contains(err.Error(), "mencapai batas") {
+		if errors.Is(err, usecase.ErrCareerLimitReached) {
 			c.JSON(http.StatusForbidden, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrUserNotFound) || errors.Is(err, usecase.ErrCareerNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if strings.Contains(strings.ToLower(err.Error()), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
 				"success": false,
 				"message": err.Error(),
 			})
@@ -48,7 +65,7 @@ func (h *CareerSessionHandler) Create(c *gin.Context) {
 
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Terjadi masalah pada internal server",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -62,7 +79,15 @@ func (h *CareerSessionHandler) Create(c *gin.Context) {
 func (h *CareerSessionHandler) GetCareerSession(c *gin.Context) {
 	careerSession, err := h.careerSessionUsecase.GetCareerSession(c.Request.Context(), c.Param("careerSessionId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrCareerSessionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -90,7 +115,7 @@ func (h *CareerSessionHandler) GetAllCareerSession(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Terjadi error pada internal server",
+			"message": err.Error(),
 		})
 		return
 	}
@@ -114,9 +139,17 @@ func (h *CareerSessionHandler) GetDashboardAnalytics(c *gin.Context) {
 
 	analyticsData, err := h.careerSessionUsecase.GetDashboardAnalytics(c.Request.Context(), careerSessionID)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "tidak ditemukan") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
-			"message": "Terjadi error pada internal server",
+			"message": err.Error(),
 		})
 		return
 	}

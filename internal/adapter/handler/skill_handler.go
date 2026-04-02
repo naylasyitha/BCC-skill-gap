@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +21,7 @@ func NewSkillHandler(s *usecase.SkillUsecase) *SkillHandler {
 func (s *SkillHandler) GetAllSkill(c *gin.Context) {
 	result, err := s.skillUsecase.GetAllSkill(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -36,7 +38,15 @@ func (s *SkillHandler) GetAllSkill(c *gin.Context) {
 func (s *SkillHandler) GetSkillById(c *gin.Context) {
 	result, err := s.skillUsecase.GetSkillById(c.Request.Context(), c.Param("skillId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrSkillNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -63,7 +73,7 @@ func (s *SkillHandler) CreateSkill(c *gin.Context) {
 
 	result, err := s.skillUsecase.CreateSkill(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -90,7 +100,15 @@ func (s *SkillHandler) UpdateSkill(c *gin.Context) {
 
 	result, err := s.skillUsecase.UpdateSkill(c.Request.Context(), c.Param("skillId"), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrSkillNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -107,7 +125,15 @@ func (s *SkillHandler) UpdateSkill(c *gin.Context) {
 func (s *SkillHandler) DeleteSkill(c *gin.Context) {
 	err := s.skillUsecase.DeleteSkill(c.Request.Context(), c.Param("skillId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrSkillNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -133,7 +159,15 @@ func (s *SkillHandler) CareerSkillAsign(c *gin.Context) {
 
 	result, err := s.skillUsecase.CareerSkillAsign(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if strings.Contains(strings.ToLower(err.Error()), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -160,7 +194,15 @@ func (s *SkillHandler) UpdateCareerSkill(c *gin.Context) {
 
 	result, err := s.skillUsecase.UpdateCareerSkill(c.Request.Context(), c.Param("skillId"), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if strings.Contains(strings.ToLower(err.Error()), "tidak ditemukan") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -177,7 +219,16 @@ func (s *SkillHandler) UpdateCareerSkill(c *gin.Context) {
 func (s *SkillHandler) RemoveSkillFromCareer(c *gin.Context) {
 	err := s.skillUsecase.RemoveSkillFromCareer(c.Request.Context(), c.Param("skillId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		// Menangkap pesan error custom dari usecase untuk not found
+		if strings.Contains(strings.ToLower(err.Error()), "tidak ditemukan") {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})

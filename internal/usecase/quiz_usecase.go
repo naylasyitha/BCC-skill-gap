@@ -3,11 +3,18 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
 	"strings"
 
 	"github.com/google/uuid"
+)
+
+var (
+	ErrQuizSessionNotFound    = errors.New("Sesi kuis tidak ditemukan atau jawaban kosong")
+	ErrSelfAssessmentNotFound = errors.New("Data self-assessment tidak ditemukan")
+	ErrNotEnoughQuestions     = errors.New("Bank soal tidak mencukupi untuk skill ini")
 )
 
 type QuizUsecase struct {
@@ -92,29 +99,31 @@ func UserFinalLevel(userLevel entity.LevelEnum, isCorrect1 bool, isCorrect2 bool
 func (u *QuizUsecase) StartQuiz(ctx context.Context, userID string, careerSessionID string) (*dto.StartQuizResponse, error) {
 	userUUID, err := uuid.Parse(userID)
 	if err != nil {
-		return nil, errors.New("User ID tidak valid")
+		return nil, errors.New("Format User ID tidak valid")
 	}
 
 	sessionUUID, err := uuid.Parse(careerSessionID)
 	if err != nil {
-		return nil, errors.New("Career Session ID tidak valid")
+		return nil, errors.New("Format Career Session ID tidak valid")
 	}
 
 	quizStatus, err := u.quizRepo.GetQuizSessionStatus(ctx, sessionUUID.String())
 	if err != nil {
-		return nil, errors.New("Gagal memeriksa status sesi kuis")
+		fmt.Println("Gagal memeriksa status sesi kuis:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	if quizStatus != nil {
 		err := u.quizRepo.Delete(ctx, quizStatus.ID.String())
 		if err != nil {
-			return nil, errors.New("Gagal mereset sesi kuis")
+			fmt.Println("Gagal mereset sesi kuis lama:", err.Error())
+			return nil, ErrInternalServer
 		}
 	}
 
 	selfSkills, err := u.quizRepo.GetSelfAssessmentSkillsBySession(ctx, sessionUUID.String())
 	if err != nil || len(selfSkills) == 0 {
-		return nil, errors.New("Data self-assessment tidak ditemukan")
+		return nil, ErrSelfAssessmentNotFound
 	}
 
 	quizSessionUUID := uuid.New()
@@ -137,7 +146,7 @@ func (u *QuizUsecase) StartQuiz(ctx context.Context, userID string, careerSessio
 		if level1 == level2 {
 			quests, err := u.quizRepo.GetRandomQuestionBySkillAndLevel(ctx, selfSkill.SkillID.String(), level1, 2)
 			if err != nil || len(quests) < 2 {
-				return nil, errors.New("Bank soal tidak mencukupi untuk skill ini")
+				return nil, ErrNotEnoughQuestions
 			}
 			selectedQuestion = quests
 
@@ -145,7 +154,7 @@ func (u *QuizUsecase) StartQuiz(ctx context.Context, userID string, careerSessio
 			quests1, err1 := u.quizRepo.GetRandomQuestionBySkillAndLevel(ctx, selfSkill.SkillID.String(), level1, 1)
 			quests2, err2 := u.quizRepo.GetRandomQuestionBySkillAndLevel(ctx, selfSkill.SkillID.String(), level2, 1)
 			if err1 != nil || err2 != nil || len(quests1) < 1 || len(quests2) < 1 {
-				return nil, errors.New("Bank soal tidak mencukupi untuk skill ini")
+				return nil, ErrNotEnoughQuestions
 			}
 			selectedQuestion = append(selectedQuestion, quests1[0], quests2[0])
 		}
@@ -170,11 +179,11 @@ func (u *QuizUsecase) StartQuiz(ctx context.Context, userID string, careerSessio
 				OptionD:         q.OptionD,
 			})
 		}
-
 	}
 
 	if err := u.quizRepo.CreateQuizTransaction(ctx, quizSession, quizAnswers); err != nil {
-		return nil, err
+		fmt.Println("Gagal membuat transaksi kuis baru:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.StartQuizResponse{
@@ -185,23 +194,35 @@ func (u *QuizUsecase) StartQuiz(ctx context.Context, userID string, careerSessio
 }
 
 func (u *QuizUsecase) UpdateAnswer(ctx context.Context, quizSessionID string, req dto.UpdateAnswerRequest) error {
-	err := u.quizRepo.UpdateQuizAnswer(ctx, quizSessionID, req.QuizAnswerID, req.UserAnswer)
+	quizSessionUUID, err := uuid.Parse(quizSessionID)
 	if err != nil {
-		return errors.New("Gagal menyimpan jawaban")
+		return errors.New("Format Quiz Session ID tidak valid")
+	}
+
+	err = u.quizRepo.UpdateQuizAnswer(ctx, quizSessionUUID.String(), req.QuizAnswerID, req.UserAnswer)
+	if err != nil {
+		fmt.Println("Gagal menyimpan update jawaban kuis:", err.Error())
+		return ErrInternalServer
 	}
 	return nil
 }
 
 func (u *QuizUsecase) SubmitQuiz(ctx context.Context, userId string, quizSessionID string) (*dto.SubmitQuizResponse, error) {
-	quizAnswers, err := u.quizRepo.GetAnswerWithQuestions(ctx, quizSessionID)
+	quizSessionUUID, err := uuid.Parse(quizSessionID)
+	if err != nil {
+		return nil, errors.New("Format Quiz Session ID tidak valid")
+	}
+
+	quizAnswers, err := u.quizRepo.GetAnswerWithQuestions(ctx, quizSessionUUID.String())
 	if err != nil || len(quizAnswers) == 0 {
-		return nil, errors.New("Gagal mengambil jawaban kuis")
+		return nil, ErrQuizSessionNotFound
 	}
 
 	careerSessionId := quizAnswers[0].QuizSession.UserCareerSessionID.String()
 	selfAssessmentSkills, err := u.quizRepo.GetSelfAssessmentSkillsBySession(ctx, careerSessionId)
 	if err != nil {
-		return nil, errors.New("Gagal mengambil data self-assessment")
+		fmt.Println("Gagal mengambil data self-assessment saat submit kuis:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	userLevel := make(map[string]entity.LevelEnum)
@@ -261,13 +282,14 @@ func (u *QuizUsecase) SubmitQuiz(ctx context.Context, userId string, quizSession
 		updatedSkills = append(updatedSkills, ss)
 	}
 
-	err = u.quizRepo.SubmitQuizTransaction(ctx, quizSessionID, careerSessionId, totalScore, updatedSkills, updatedAnswers)
+	err = u.quizRepo.SubmitQuizTransaction(ctx, quizSessionUUID.String(), careerSessionId, totalScore, updatedSkills, updatedAnswers)
 	if err != nil {
-		return nil, errors.New("Gagal menyimpan hasil akhir kuis")
+		fmt.Println("Gagal menyimpan transaksi hasil submit kuis:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.SubmitQuizResponse{
-		QuizSessionID: quizSessionID,
+		QuizSessionID: quizSessionUUID.String(),
 		TotalScore:    totalScore,
 		SkillsResult:  skillsResult,
 	}, nil

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
@@ -28,7 +29,15 @@ func (h *UserHandler) GetUserData(c *gin.Context) {
 
 	user, err := h.userUsecase.GetUserData(c.Request.Context(), userId.(string))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -64,7 +73,15 @@ func (h *UserHandler) UserUpdateData(c *gin.Context) {
 
 	response, err := h.userUsecase.UpdateUser(c.Request.Context(), userId.(string), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -89,7 +106,15 @@ func (h *UserHandler) DeleteUserData(c *gin.Context) {
 	}
 	err := h.userUsecase.DeleteUser(c.Request.Context(), userId.(string))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrUserNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})

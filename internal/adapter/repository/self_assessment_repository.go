@@ -2,11 +2,9 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"project-bcc/internal/entity"
 	"project-bcc/internal/usecase"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -23,9 +21,5 @@ func (s *selfAssessmentRepository) CreateAssessmentSession(ctx context.Context, 
 }
 
 func (s *selfAssessmentRepository) UpdateStatus(ctx context.Context, careerSessionID string, status entity.StatusEnum) error {
-	careerUUID, err := uuid.Parse(careerSessionID)
-	if err != nil {
-		return errors.New("Format ID tidak valid")
-	}
-	return s.db.WithContext(ctx).Model(&entity.UserCareerSession{}).Where("id = ?", careerUUID).Update("status", status).Error
+	return s.db.WithContext(ctx).Model(&entity.UserCareerSession{}).Where("id = ?", careerSessionID).Update("status", status).Error
 }

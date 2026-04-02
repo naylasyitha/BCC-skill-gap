@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -19,7 +21,7 @@ func NewCareerHandler(car *usecase.CareerUsecase) *CareerHandler {
 func (ch *CareerHandler) GetAllCareer(c *gin.Context) {
 	result, err := ch.careerUsecase.GetAllCareer(c.Request.Context())
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -36,7 +38,15 @@ func (ch *CareerHandler) GetAllCareer(c *gin.Context) {
 func (ch *CareerHandler) GetCareerById(c *gin.Context) {
 	result, err := ch.careerUsecase.GetCareerById(c.Request.Context(), c.Param("careerId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrCareerNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -63,7 +73,23 @@ func (ch *CareerHandler) CreateCareer(c *gin.Context) {
 
 	result, err := ch.careerUsecase.CreateCareer(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if strings.Contains(strings.ToLower(err.Error()), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrSkillNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -91,7 +117,15 @@ func (h *CareerHandler) UpdateCareer(c *gin.Context) {
 
 	result, err := h.careerUsecase.UpdateCareer(c.Request.Context(), careerID, req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrCareerNotFound) || errors.Is(err, usecase.ErrSkillNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -108,7 +142,15 @@ func (h *CareerHandler) UpdateCareer(c *gin.Context) {
 func (ch *CareerHandler) DeleteCareer(c *gin.Context) {
 	err := ch.careerUsecase.DeleteCareer(c.Request.Context(), c.Param("careerId"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrCareerNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})

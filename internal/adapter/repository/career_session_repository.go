@@ -2,11 +2,9 @@ package repository
 
 import (
 	"context"
-	"errors"
 	"project-bcc/internal/entity"
 	"project-bcc/internal/usecase"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -24,37 +22,28 @@ func (c *careerSessionRepository) Create(ctx context.Context, session *entity.Us
 
 func (c *careerSessionRepository) FindById(ctx context.Context, careerSessionId string) (*entity.UserCareerSession, error) {
 	var careerSession entity.UserCareerSession
-	careerUUID, err := uuid.Parse(careerSessionId)
-	if err != nil {
-		return nil, errors.New("Format ID tidak valid")
-	}
+	err := c.db.WithContext(ctx).
+		Preload("User").
+		Preload("Career").
+		First(&careerSession, "id = ?", careerSessionId).Error
 
-	err = c.db.WithContext(ctx).Preload("User").Preload("Career").Where("id = ?", careerUUID).First(&careerSession).Error
 	if err != nil {
 		return nil, err
 	}
-
 	return &careerSession, nil
 }
 func (c *careerSessionRepository) CountByUserID(ctx context.Context, userID string) (int, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return 0, errors.New("Format ID tidak valid")
-	}
-
 	var count int64
-	err = c.db.WithContext(ctx).Model(&entity.UserCareerSession{}).Where("user_id = ?", userUUID).Count(&count).Error
+	err := c.db.WithContext(ctx).
+		Model(&entity.UserCareerSession{}).
+		Where("user_id = ?", userID).
+		Count(&count).Error
 	return int(count), err
 }
 
 func (c *careerSessionRepository) GetAllCareerSession(ctx context.Context, userID string) ([]entity.UserCareerSession, error) {
-	userUUID, err := uuid.Parse(userID)
-	if err != nil {
-		return nil, errors.New("Format ID tidak valid")
-	}
-
 	var careerSessions []entity.UserCareerSession
-	err = c.db.WithContext(ctx).Preload("Career").Where("user_id = ?", userUUID).Find(&careerSessions).Error
+	err := c.db.WithContext(ctx).Preload("Career").Where("user_id = ?", userID).Find(&careerSessions).Error
 	if err != nil {
 		return nil, err
 	}
@@ -69,4 +58,20 @@ func (c *careerSessionRepository) GetAnalyticsData(ctx context.Context, careerSe
 		return nil, err
 	}
 	return skills, nil
+}
+
+func (c *careerSessionRepository) GetRequiredLevel(ctx context.Context, careerSessionID string) ([]entity.CareerSkill, error) {
+	var userCareerSession entity.UserCareerSession
+	err := c.db.WithContext(ctx).Select("career_id").Where("id = ?", careerSessionID).First(&userCareerSession).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var requiredLevels []entity.CareerSkill
+	err = c.db.WithContext(ctx).Where("career_id", userCareerSession.CareerID).Find(&requiredLevels).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return requiredLevels, nil
 }

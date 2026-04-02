@@ -5,7 +5,6 @@ import (
 	"os"
 	"project-bcc/internal/usecase"
 	"project-bcc/pkg/jwt"
-
 	"strings"
 
 	"github.com/gin-gonic/gin"
@@ -15,9 +14,9 @@ func AuthMiddleware(authRepo usecase.AuthRepository) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{
 				"success": false,
-				"message": "Header Authorization tidak ditemukan",
+				"message": "Sesi tidak ditemukan, silakan login terlebih dahulu",
 			})
 			return
 		}
@@ -25,9 +24,16 @@ func AuthMiddleware(authRepo usecase.AuthRepository) gin.HandlerFunc {
 		token := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := jwt.ValidateToken(token, os.Getenv("JWT_SECRET"))
 		if err != nil {
+			if strings.Contains(strings.ToLower(err.Error()), "expired") {
+				c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
+					"success": false,
+					"message": "Sesi Anda telah berakhir, silakan login kembali",
+				})
+				return
+			}
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
-				"message": "Token tidak valid atau sudah expired",
+				"message": "Token kredensial tidak valid",
 			})
 			return
 		}
@@ -37,14 +43,6 @@ func AuthMiddleware(authRepo usecase.AuthRepository) gin.HandlerFunc {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
 				"success": false,
 				"message": "Pengguna tidak ditemukan",
-			})
-			return
-		}
-
-		if claims.UpdatedAt < user.UpdatedAt.Unix() {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{
-				"success": false,
-				"message": "Token sudah tidak valid, silahkan login kembali",
 			})
 			return
 		}

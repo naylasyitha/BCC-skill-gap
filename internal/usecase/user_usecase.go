@@ -3,9 +3,16 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
 	"time"
+
+	"gorm.io/gorm"
+)
+
+var (
+	ErrUserNotFound = errors.New("User tidak ditemukan")
 )
 
 type UserUsecase struct {
@@ -21,7 +28,10 @@ func NewUserUsecase(authRepo AuthRepository) *UserUsecase {
 func (u *UserUsecase) GetUserData(ctx context.Context, id string) (*dto.UserResponse, error) {
 	user, err := u.authRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		return nil, ErrInternalServer
 	}
 	return &dto.UserResponse{
 		ID:             user.ID.String(),
@@ -41,7 +51,11 @@ func (u *UserUsecase) GetUserData(ctx context.Context, id string) (*dto.UserResp
 func (u *UserUsecase) UpdateUser(ctx context.Context, id string, req dto.UsersUpdateRequest) (*dto.UserResponse, error) {
 	user, err := u.authRepo.FindByID(ctx, id)
 	if err != nil {
-		return nil, errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrUserNotFound
+		}
+		fmt.Println("Gagal mengambil data user:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	if req.Fullname != "" {
@@ -66,7 +80,8 @@ func (u *UserUsecase) UpdateUser(ctx context.Context, id string, req dto.UsersUp
 
 	err = u.authRepo.Update(ctx, user)
 	if err != nil {
-		return nil, errors.New("Gagal memperbarui data user")
+		fmt.Println("Gagal menyimpan update user:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.UserResponse{
@@ -86,12 +101,20 @@ func (u *UserUsecase) UpdateUser(ctx context.Context, id string, req dto.UsersUp
 func (u *UserUsecase) DeleteUser(ctx context.Context, id string) error {
 	_, err := u.authRepo.FindByID(ctx, id)
 	if err != nil {
-		return errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		fmt.Println("Gagal mengambil data user:", err.Error())
+		return ErrInternalServer
 	}
 
 	err = u.authRepo.Delete(ctx, id)
 	if err != nil {
-		return err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrUserNotFound
+		}
+		fmt.Println("Gagal menghapus data:", err.Error())
+		return ErrInternalServer
 	}
 	return nil
 }

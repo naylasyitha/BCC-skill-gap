@@ -1,9 +1,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
@@ -28,6 +30,22 @@ func (h *QuestionHandler) CreateQuestion(c *gin.Context) {
 
 	res, err := h.questionUsecase.CreateQuestion(c.Request.Context(), req)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrSkillNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -64,7 +82,15 @@ func (h *QuestionHandler) GetQuestionById(c *gin.Context) {
 
 	res, err := h.questionUsecase.GetQuestionById(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
+		if errors.Is(err, usecase.ErrQuestionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -92,6 +118,14 @@ func (h *QuestionHandler) UpdateQuestion(c *gin.Context) {
 
 	res, err := h.questionUsecase.UpdateQuestion(c.Request.Context(), id, req)
 	if err != nil {
+		if errors.Is(err, usecase.ErrQuestionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -111,6 +145,14 @@ func (h *QuestionHandler) DeleteQuestion(c *gin.Context) {
 
 	err := h.questionUsecase.DeleteQuestion(c.Request.Context(), id)
 	if err != nil {
+		if errors.Is(err, usecase.ErrQuestionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),

@@ -41,7 +41,7 @@ func main() {
 	careerHandler := handler.NewCareerHandler(careerUsecase)
 	skillHandler := handler.NewSkillHandler(skillUsecase)
 	selfAssesmentHandler := handler.NewSelfAssessmentHandler(selfAssessmentUsecase)
-	quizHandler := handler.NewQuizHandler(*quizUsecase)
+	quizHandler := handler.NewQuizHandler(quizUsecase)
 	careerSessionHandler := handler.NewCareerSessionHandler(careerSessionUsecase)
 	questionHandler := handler.NewQuestionHandler(questionUsecase)
 	userHandler := handler.NewUserHandler(userUsecase)

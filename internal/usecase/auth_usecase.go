@@ -10,12 +10,17 @@ import (
 	"project-bcc/pkg/bcrypt"
 	"project-bcc/pkg/email"
 	"project-bcc/pkg/jwt"
+
+	"gorm.io/gorm"
 )
 
 var (
+	ErrConflictData       = errors.New("Email sudah digunakan")
 	ErrInvalidCredentials = errors.New("Email atau password salah")
+	ErrUnauthorized       = errors.New("Token tidak valid atau sudah kedaluwarsa")
 	ErrUnverifiedAccount  = errors.New("Akun belum diverifikasi, silakan cek email anda")
-	ErrInternalServer     = errors.New("Terjadi kesalahan pada server")
+	ErrInternalServer     = errors.New("Terjadi masalah internal pada server")
+	ErrAlreadyVerified    = errors.New("Email sudah diverifikasi")
 )
 
 type AuthUsecase struct {
@@ -29,12 +34,13 @@ func NewAuthUsecase(repo AuthRepository) *AuthUsecase {
 func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) error {
 	existEmail, _ := au.authRepo.FindByEmail(ctx, req.Email)
 	if existEmail != nil {
-		return errors.New("Email sudah digunakan")
+		return ErrConflictData
 	}
 
 	hashedPassword, err := bcrypt.HashPassword(req.Password)
 	if err != nil {
-		return errors.New("Gagal Membuat Password")
+		fmt.Println("gagal membuat password")
+		return ErrInternalServer
 	}
 
 	userRole := entity.RoleUser
@@ -49,17 +55,17 @@ func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) er
 
 	err = au.authRepo.Save(ctx, user)
 	if err != nil {
-		return errors.New("Gagal menyimpan user")
+		fmt.Println("Gagal menyimpan user" + err.Error())
+		return ErrInternalServer
 	}
 
 	frontendURL := os.Getenv("FE_URL")
 	token, _ := jwt.GenerateEmailVerificationToken(user.ID.String())
-	fmt.Println("EMAIL VERIFICATION TOKEN: ", token)
 	verificationLink := fmt.Sprintf("%s/verify", frontendURL)
 	err = email.SendVerificationEmail(user.Email, verificationLink, token)
 	if err != nil {
-		fmt.Println("EMAIL ERROR: ", err)
-		return errors.New("Gagal mengirim email verifikasi" + err.Error())
+		fmt.Println("Gagal mengirim email verifikasi" + err.Error())
+		return ErrInternalServer
 	}
 
 	return nil
@@ -68,8 +74,12 @@ func (au *AuthUsecase) Register(ctx context.Context, req dto.RegisterRequest) er
 func (au *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest) (*dto.AuthResponse, error) {
 
 	user, err := au.authRepo.FindByEmail(ctx, req.Email)
-	if err != nil || user == nil {
-		return nil, ErrInvalidCredentials
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return nil, ErrInvalidCredentials
+		}
+		return nil, ErrInternalServer
 	}
 
 	if !user.IsVerified {
@@ -82,18 +92,20 @@ func (au *AuthUsecase) Login(ctx context.Context, req dto.LoginRequest) (*dto.Au
 
 	accessToken, err := jwt.GenerateAccessToken(user.ID.String(), string(user.Role), user.UpdatedAt.Unix())
 	if err != nil {
-		return nil, errors.New("Gagal generate access token")
+		fmt.Println("Gagal generate access token" + err.Error())
+		return nil, ErrInternalServer
 	}
 
 	refreshToken, err := jwt.GenerateRefreshToken(user.ID.String(), string(user.Role), user.UpdatedAt.Unix(), req.RememberMe)
 	if err != nil {
-		return nil, errors.New("Gagal generate refresh token")
+		fmt.Println("Gagal generate refresh token" + err.Error())
+		return nil, ErrInternalServer
 	}
 
-	fmt.Println("ACCESS TOKEN: ", accessToken)
 	err = au.authRepo.UpdateRefreshToken(ctx, user.ID.String(), refreshToken)
 	if err != nil {
-		return nil, errors.New("Gagal menyimpan refresh token")
+		fmt.Println("Gagal menyimpan refresh token" + err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.AuthResponse{
@@ -112,127 +124,172 @@ func (au *AuthUsecase) VerifyEmail(ctx context.Context, req dto.VerifyEmailReque
 
 	claims, err := jwt.ValidateToken(req.Token, os.Getenv("EMAIL_VERIFY_SECRET"))
 	if err != nil {
-		return errors.New("Token verifikasi tidak valid atau sudah kedaluwarsa")
+		fmt.Println("Token verifikasi tidak valid atau sudah kedaluwarsa" + err.Error())
+		return ErrUnauthorized
 	}
 
 	if claims.Type != "email_verification" {
-		return errors.New("Tipe token tidak valid")
+		fmt.Println("Tipe token tidak valid")
+		return ErrUnauthorized
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return ErrInvalidCredentials
+		}
+		return ErrInternalServer
 	}
 
 	if user.IsVerified {
-		return errors.New("Email sudah diverifikasi")
+		return ErrAlreadyVerified
 	}
 
 	user.IsVerified = true
-	return au.authRepo.Update(ctx, user)
+	err = au.authRepo.Update(ctx, user)
+	if err != nil {
+		fmt.Println("Gagal memperbarui status verifikasi email" + err.Error())
+		return ErrInternalServer
+	}
+	return nil
 }
 
 func (au *AuthUsecase) ResendVerification(ctx context.Context, req dto.ResendVerificationRequest) error {
 
 	user, err := au.authRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return ErrInvalidCredentials
+		}
+		return ErrInternalServer
 	}
 
 	if user.IsVerified {
-		return errors.New("Email sudah diverifikasi")
+		return ErrAlreadyVerified
 	}
 
 	token, err := jwt.GenerateEmailVerificationToken(user.ID.String())
 	if err != nil {
-		return errors.New("Gagal generate token")
+		fmt.Println("Gagal generate token" + err.Error())
+		return ErrInternalServer
 	}
-
-	fmt.Println("RESEND EMAIL TOKEN: ", token)
 
 	link := req.CallbackUrl
 	if link == "" {
 		link = os.Getenv("FE_URL") + "/verify"
 	}
-	return email.SendVerificationEmail(user.Email, link, token)
+
+	err = email.SendVerificationEmail(user.Email, link, token)
+	if err != nil {
+		fmt.Println("Gagal mengirim email verifikasi" + err.Error())
+		return ErrInternalServer
+	}
+	return nil
 }
 
 func (au *AuthUsecase) ForgotPassword(ctx context.Context, req dto.ForgotPasswordRequest) error {
 
 	user, err := au.authRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
-		return errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return ErrInvalidCredentials
+		}
+		return ErrInternalServer
 	}
 
 	token, err := jwt.GenerateResetPasswordToken(user.ID.String(), user.UpdatedAt.Unix())
 	if err != nil {
-		return errors.New("Gagal generate token")
+		fmt.Println("Gagal generate token" + err.Error())
+		return ErrInternalServer
 	}
-
-	fmt.Println("FORGET PASSWORD TOKEN: ", token)
 
 	link := os.Getenv("FE_URL") + "/reset-password"
 
-	return email.SendResetPasswordEmail(user.Email, link, token)
+	err = email.SendResetPasswordEmail(user.Email, link, token)
+	if err != nil {
+		fmt.Println("Gagal mengirim email reset password" + err.Error())
+		return ErrInternalServer
+	}
+	return nil
 }
 
 func (au *AuthUsecase) ResetPassword(ctx context.Context, req dto.ResetPasswordRequest) error {
 
 	claims, err := jwt.ValidateToken(req.Token, os.Getenv("RESET_PASSWORD_SECRET"))
 	if err != nil {
-		return errors.New("Token tidak valid atau sudah kedaluwarsa")
+		fmt.Println("Token tidak valid atau sudah kedaluwarsa" + err.Error())
+		return ErrUnauthorized
 	}
 
 	if claims.Type != "reset_password" {
-		return errors.New("Tipe token tidak valid")
+		fmt.Println("Tipe token tidak valid")
+		return ErrUnauthorized
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return ErrInvalidCredentials
+		}
+		return ErrInternalServer
 	}
 
 	if claims.UpdatedAt < user.UpdatedAt.Unix() {
-		return errors.New("Token tidak valid atau sudah kedaluwarsa")
+		fmt.Println(ErrUnauthorized)
+		return ErrUnauthorized
 	}
 
 	hashedPassword, err := bcrypt.HashPassword(req.Password)
 	if err != nil {
-		return errors.New("Gagal hash password")
+		fmt.Println("Gagal hash password" + err.Error())
+		return ErrInternalServer
 	}
 
 	user.Password = hashedPassword
 	user.RefreshToken = ""
-	return au.authRepo.Update(ctx, user)
+	err = au.authRepo.Update(ctx, user)
+	if err != nil {
+		fmt.Println("Gagal memperbarui password" + err.Error())
+		return ErrInternalServer
+	}
+	return nil
 }
 
 func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.RefreshResponse, error) {
 
 	claims, err := jwt.ValidateToken(refreshToken, os.Getenv("REFRESH_TOKEN_SECRET"))
 	if err != nil {
-		return nil, errors.New("Refresh token tidak valid atau kedaluwarsa")
+		fmt.Println("Refresh token tidak valid atau kedaluwarsa" + err.Error())
+		return nil, ErrUnauthorized
 	}
 
 	if claims.Type != "refresh" {
-		return nil, errors.New("Tipe token tidak valid")
+		fmt.Println("Tipe token tidak valid")
+		return nil, ErrUnauthorized
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
 	if err != nil {
-		return nil, errors.New("User tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return nil, ErrInvalidCredentials
+		}
+		return nil, ErrInternalServer
 	}
 
 	if user.RefreshToken != refreshToken {
-		return nil, errors.New("Refresh token tidak sesuai")
-	}
-
-	if claims.UpdatedAt < user.UpdatedAt.Unix() {
-		return nil, errors.New("Refresh token sudah tidak valid, silahkan login kembali")
+		fmt.Println("Refresh token tidak sesuai")
+		return nil, ErrUnauthorized
 	}
 
 	accessToken, err := jwt.GenerateAccessToken(user.ID.String(), string(user.Role), user.UpdatedAt.Unix())
 	if err != nil {
-		return nil, errors.New("Gagal generate access token")
+		fmt.Println("Gagal generate access token" + err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.RefreshResponse{
@@ -243,14 +300,24 @@ func (au *AuthUsecase) Refresh(ctx context.Context, refreshToken string) (*dto.R
 func (au *AuthUsecase) Logout(ctx context.Context, refreshToken string) error {
 	claims, err := jwt.ValidateToken(refreshToken, os.Getenv("REFRESH_TOKEN_SECRET"))
 	if err != nil {
-		return err
+		fmt.Println("Refresh token tidak valid atau kedaluwarsa" + err.Error())
+		return ErrUnauthorized
 	}
 
 	user, err := au.authRepo.FindByID(ctx, claims.UserID)
-	if err != nil || user == nil {
-		return nil
+	if err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			fmt.Println("User tidak ditemukan" + err.Error())
+			return ErrInvalidCredentials
+		}
+		return ErrInternalServer
 	}
 
 	user.RefreshToken = ""
-	return au.authRepo.Update(ctx, user)
+	err = au.authRepo.Update(ctx, user)
+	if err != nil {
+		fmt.Println("Gagal mengupdate refresh token" + err.Error())
+		return ErrInternalServer
+	}
+	return nil
 }

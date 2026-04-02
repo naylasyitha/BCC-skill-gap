@@ -1,18 +1,20 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"project-bcc/dto"
 	"project-bcc/internal/usecase"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 type QuizHandler struct {
-	quizUsecase usecase.QuizUsecase
+	quizUsecase *usecase.QuizUsecase
 }
 
-func NewQuizHandler(qu usecase.QuizUsecase) *QuizHandler {
+func NewQuizHandler(qu *usecase.QuizUsecase) *QuizHandler {
 	return &QuizHandler{quizUsecase: qu}
 }
 
@@ -30,13 +32,29 @@ func (h *QuizHandler) StartQuiz(c *gin.Context) {
 	if careerSessionID == "" {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
-			"message": "career session ID tidak valid",
+			"message": "Career session ID tidak valid",
 		})
 		return
 	}
 
 	res, err := h.quizUsecase.StartQuiz(c.Request.Context(), userID.(string), careerSessionID)
 	if err != nil {
+		if strings.Contains(strings.ToLower(err.Error()), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrSelfAssessmentNotFound) || errors.Is(err, usecase.ErrNotEnoughQuestions) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
@@ -60,6 +78,7 @@ func (h *QuizHandler) UpdateAnswer(c *gin.Context) {
 		})
 		return
 	}
+
 	var req dto.UpdateAnswerRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -105,6 +124,14 @@ func (h *QuizHandler) SubmitQuiz(c *gin.Context) {
 
 	result, err := h.quizUsecase.SubmitQuiz(c.Request.Context(), userId.(string), quizSessionID)
 	if err != nil {
+		if errors.Is(err, usecase.ErrQuizSessionNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),

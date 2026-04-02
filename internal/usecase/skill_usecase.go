@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"errors"
+	"fmt"
 	"project-bcc/dto"
 	"project-bcc/internal/entity"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 type SkillUsecase struct {
@@ -27,7 +29,8 @@ func NewSkillUsecase(
 func (s *SkillUsecase) GetAllSkill(ctx context.Context) ([]dto.SkillResponse, error) {
 	skills, err := s.skillRepository.FindAll(ctx)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal mengambil semua data skill:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	var responses []dto.SkillResponse
@@ -45,7 +48,11 @@ func (s *SkillUsecase) GetAllSkill(ctx context.Context) ([]dto.SkillResponse, er
 func (s *SkillUsecase) GetSkillById(ctx context.Context, id string) (*dto.SkillResponse, error) {
 	skill, err := s.skillRepository.FindById(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrSkillNotFound
+		}
+		fmt.Println("Gagal mengambil data skill by ID:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.SkillResponse{
@@ -63,7 +70,8 @@ func (s *SkillUsecase) CreateSkill(ctx context.Context, req dto.SkillCreateReque
 
 	err := s.skillRepository.Save(ctx, skill)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan skill baru:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.SkillResponse{
@@ -71,13 +79,16 @@ func (s *SkillUsecase) CreateSkill(ctx context.Context, req dto.SkillCreateReque
 		Name: skill.Name,
 		Desc: skill.Desc,
 	}, nil
-
 }
 
 func (s *SkillUsecase) UpdateSkill(ctx context.Context, id string, req dto.SkillUpdateRequest) (*dto.SkillResponse, error) {
 	skill, err := s.skillRepository.FindById(ctx, id)
 	if err != nil {
-		return nil, err
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrSkillNotFound
+		}
+		fmt.Println("Gagal query skill saat update:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	if req.Name != "" {
@@ -90,7 +101,8 @@ func (s *SkillUsecase) UpdateSkill(ctx context.Context, id string, req dto.Skill
 
 	err = s.skillRepository.Update(ctx, skill)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan update skill:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.SkillResponse{
@@ -103,26 +115,39 @@ func (s *SkillUsecase) UpdateSkill(ctx context.Context, id string, req dto.Skill
 func (s *SkillUsecase) DeleteSkill(ctx context.Context, id string) error {
 	_, err := s.skillRepository.FindById(ctx, id)
 	if err != nil {
-		return errors.New("Skill tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return ErrSkillNotFound
+		}
+		fmt.Println("Gagal query skill saat delete:", err.Error())
+		return ErrInternalServer
 	}
 
 	err = s.skillRepository.Delete(ctx, id)
 	if err != nil {
-		return err
+		fmt.Println("Gagal menghapus skill di database:", err.Error())
+		return ErrInternalServer
 	}
 	return nil
 }
 
 func (s *SkillUsecase) CareerSkillAsign(ctx context.Context, req dto.CareerSkillCreateRequest) (*dto.CareerSkillAsignResponse, error) {
+	careerUUID, err1 := uuid.Parse(req.CareerID)
+	skillUUID, err2 := uuid.Parse(req.SkillID)
+
+	if err1 != nil || err2 != nil {
+		return nil, errors.New("Format ID Karir atau Skill tidak valid")
+	}
+
 	careerSkill := &entity.CareerSkill{
-		CareerID:      uuid.MustParse(req.CareerID),
-		SkillID:       uuid.MustParse(req.SkillID),
+		CareerID:      careerUUID,
+		SkillID:       skillUUID,
 		Priority:      req.Priority,
 		RequiredLevel: entity.LevelEnum(req.RequiredLevel),
 	}
 	err := s.careerSkillRepository.Save(ctx, careerSkill)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan relasi CareerSkill:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.CareerSkillAsignResponse{
@@ -137,7 +162,11 @@ func (s *SkillUsecase) CareerSkillAsign(ctx context.Context, req dto.CareerSkill
 func (s *SkillUsecase) UpdateCareerSkill(ctx context.Context, id string, req dto.CareerSkillUpdateRequest) (*dto.CareerSkillAsignResponse, error) {
 	careerSkill, err := s.careerSkillRepository.FindById(ctx, id)
 	if err != nil {
-		return nil, errors.New("Karir skill tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, errors.New("Relasi karir dan skill tidak ditemukan")
+		}
+		fmt.Println("Gagal query CareerSkill saat update:", err.Error())
+		return nil, ErrInternalServer
 	}
 	if req.Priority != 0 {
 		careerSkill.Priority = req.Priority
@@ -149,7 +178,8 @@ func (s *SkillUsecase) UpdateCareerSkill(ctx context.Context, id string, req dto
 
 	err = s.careerSkillRepository.Update(ctx, careerSkill)
 	if err != nil {
-		return nil, err
+		fmt.Println("Gagal menyimpan update CareerSkill:", err.Error())
+		return nil, ErrInternalServer
 	}
 
 	return &dto.CareerSkillAsignResponse{
@@ -164,12 +194,17 @@ func (s *SkillUsecase) UpdateCareerSkill(ctx context.Context, id string, req dto
 func (s *SkillUsecase) RemoveSkillFromCareer(ctx context.Context, id string) error {
 	_, err := s.careerSkillRepository.FindById(ctx, id)
 	if err != nil {
-		return errors.New("Karir skill tidak ditemukan")
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return errors.New("Relasi karir dan skill tidak ditemukan")
+		}
+		fmt.Println("Gagal query CareerSkill saat delete:", err.Error())
+		return ErrInternalServer
 	}
 
 	err = s.careerSkillRepository.Delete(ctx, id)
 	if err != nil {
-		return err
+		fmt.Println("Gagal menghapus relasi CareerSkill:", err.Error())
+		return ErrInternalServer
 	}
 	return nil
 }

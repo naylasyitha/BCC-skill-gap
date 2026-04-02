@@ -32,7 +32,15 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	//melempar ke usecase
 	err = h.authUsecase.Register(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrConflictData) {
+			c.JSON(http.StatusConflict, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -119,7 +127,31 @@ func (h *AuthHandler) VerifyEmail(c *gin.Context) {
 
 	err := h.authUsecase.VerifyEmail(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrUnauthorized) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrAlreadyVerified) {
+			c.JSON(http.StatusConflict, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -144,7 +176,23 @@ func (h *AuthHandler) ResendVerification(c *gin.Context) {
 
 	err := h.authUsecase.ResendVerification(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrAlreadyVerified) {
+			c.JSON(http.StatusConflict, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -169,7 +217,15 @@ func (h *AuthHandler) ForgotPassword(c *gin.Context) {
 
 	err := h.authUsecase.ForgotPassword(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -194,7 +250,23 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 
 	err := h.authUsecase.ResetPassword(c.Request.Context(), req)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
+		if errors.Is(err, usecase.ErrUnauthorized) {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			c.JSON(http.StatusNotFound, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -210,7 +282,7 @@ func (h *AuthHandler) ResetPassword(c *gin.Context) {
 func (h *AuthHandler) Refresh(c *gin.Context) {
 	refreshToken, err := c.Cookie("refresh_token")
 	if err != nil || refreshToken == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		c.JSON(http.StatusBadRequest, gin.H{
 			"success": false,
 			"message": "Refresh token tidak ditemukan",
 		})
@@ -219,7 +291,23 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 
 	result, err := h.authUsecase.Refresh(c.Request.Context(), refreshToken)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{
+		if errors.Is(err, usecase.ErrUnauthorized) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			c.JSON(http.StatusUnauthorized, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),
 		})
@@ -234,16 +322,52 @@ func (h *AuthHandler) Refresh(c *gin.Context) {
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	refreshToken, _ := c.Cookie("refresh_token")
-
-	if refreshToken != "" {
-		h.authUsecase.Logout(c.Request.Context(), refreshToken)
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": false,
+			"message": "Refresh token tidak ditemukan",
+		})
+		return
 	}
 
-	// Hapus cookie
-	c.SetSameSite(http.SameSiteNoneMode)
-	c.SetCookie("refresh_token", "", -1, "/", "", os.Getenv("APP_ENV") == "production", true)
-	c.SetCookie("role", "", -1, "/", "", os.Getenv("APP_ENV") == "production", false)
+	if refreshToken != "" {
+		err := h.authUsecase.Logout(c.Request.Context(), refreshToken)
+		if err != nil {
+			if errors.Is(err, usecase.ErrUnauthorized) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"success": false,
+					"message": err.Error(),
+				})
+				return
+
+			}
+
+			if errors.Is(err, usecase.ErrInvalidCredentials) {
+				c.JSON(http.StatusUnauthorized, gin.H{
+					"success": false,
+					"message": err.Error(),
+				})
+				return
+
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+		}
+	}
+
+	isProd := os.Getenv("APP_ENV") == "production"
+	sameSite := http.SameSiteLaxMode
+	if isProd {
+		sameSite = http.SameSiteNoneMode
+	}
+
+	c.SetSameSite(sameSite)
+	c.SetCookie("refresh_token", "", -1, "/", "", isProd, true)
+	c.SetCookie("role", "", -1, "/", "", isProd, true)
 
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
