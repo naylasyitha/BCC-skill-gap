@@ -55,6 +55,7 @@ func (r *Router) SetupRouter() *gin.Engine {
 	corsConfig.AllowOrigins = []string{
 		"http://localhost:3000",
 		"https://skillgap-staging.vercel.app",
+		"https://skillgap-fe.vercel.app",
 	}
 	corsConfig.AllowCredentials = true
 	corsConfig.AllowHeaders = []string{
