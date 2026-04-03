@@ -87,6 +87,11 @@ func (r *Router) SetupRouter() *gin.Engine {
 		careerPublic.GET("/:careerId", r.careerHandler.GetCareerById)
 	}
 
+	publicPayment := api.Group("/payment")
+	{
+		publicPayment.POST("/notification", r.paymentHandler.HandleNotification)
+	}
+
 	api.Use(middleware.AuthMiddleware(r.authRepo))
 
 	profile := api.Group("/users")
@@ -142,8 +147,6 @@ func (r *Router) SetupRouter() *gin.Engine {
 	{
 		payment.POST("/create", r.paymentHandler.CreatePayment)
 		payment.GET("/status/:orderId", r.paymentHandler.GetPaymentStatus)
-		payment.POST("/notification", r.paymentHandler.HandleNotification)
-
 	}
 
 	//konsep awal untuk cadangan just in case

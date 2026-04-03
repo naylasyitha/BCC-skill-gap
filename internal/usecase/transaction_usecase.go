@@ -37,7 +37,7 @@ func (u *PaymentUsecase) CreatePayment(ctx context.Context, userID string) (*dto
 	s.New(u.serverKey, midtrans.Sandbox)
 
 	orderID := fmt.Sprintf("ORD-%s-%d", userUUID.String()[:8], time.Now().Unix())
-	amount := int64(50000)
+	amount := int64(99000)
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
