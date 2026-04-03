@@ -4,6 +4,7 @@ type EduLevel string
 type Role string
 type LevelEnum string
 type StatusEnum string
+type TransactionStatus string
 
 const (
 	EduSMA EduLevel = "sma"
@@ -26,4 +27,9 @@ const (
 	StatusOnQuiz       StatusEnum = "on_quiz"
 	StatusOnLearning   StatusEnum = "on_learning"
 	StatusComplete     StatusEnum = "complete"
+
+	StatusPending    TransactionStatus = "pending"
+	StatusSettlement TransactionStatus = "settlement"
+	StatusExpire     TransactionStatus = "expire"
+	StatusCancel     TransactionStatus = "cancel"
 )

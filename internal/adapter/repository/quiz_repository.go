@@ -56,9 +56,17 @@ func (q *quizRepository) CreateQuizTransaction(ctx context.Context, quizSession 
 }
 
 func (q *quizRepository) UpdateQuizAnswer(ctx context.Context, quizSessionID string, quizAnswerID string, userAnswer string) error {
-	return q.db.WithContext(ctx).Model(&entity.QuizAnswer{}).
+	result := q.db.WithContext(ctx).Model(&entity.QuizAnswer{}).
 		Where("id = ? AND quiz_session_id = ?", quizAnswerID, quizSessionID).
-		Update("user_answer", userAnswer).Error
+		Update("user_answer", userAnswer)
+
+	if result.Error != nil {
+		return result.Error
+	}
+	if result.RowsAffected == 0 {
+		return gorm.ErrRecordNotFound
+	}
+	return nil
 }
 
 func (q *quizRepository) GetAnswerWithQuestions(ctx context.Context, quizSessionID string) ([]entity.QuizAnswer, error) {
@@ -70,46 +78,35 @@ func (q *quizRepository) GetAnswerWithQuestions(ctx context.Context, quizSession
 }
 
 func (q *quizRepository) SubmitQuizTransaction(ctx context.Context, quizSessionID string, careerSessionID string, totalScore int, updatedSkill []entity.SelfAssessmentSkill, updatedAnswers []entity.QuizAnswer) error {
-	tx := q.db.WithContext(ctx).Begin()
-	if tx.Error != nil {
-		return tx.Error
-	}
-
-	err := tx.Model(&entity.QuizSession{}).Where("id = ?", quizSessionID).Updates(map[string]interface{}{
-		"status": "completed",
-		"score":  totalScore,
-	}).Error
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	for _, skill := range updatedSkill {
-		err := tx.Model(&entity.SelfAssessmentSkill{}).Where("id = ?", skill.ID).Updates(map[string]interface{}{
-			"user_final_level": skill.UserFinalLevel,
-			"quiz_score":       skill.QuizScore,
-		}).Error
-		if err != nil {
-			tx.Rollback()
+	return q.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		if err := tx.Model(&entity.QuizSession{}).Where("id = ?", quizSessionID).Updates(map[string]interface{}{
+			"status": "completed",
+			"score":  totalScore,
+		}).Error; err != nil {
 			return err
 		}
-	}
 
-	for _, ans := range updatedAnswers {
-		err := tx.Model(&entity.QuizAnswer{}).Where("id = ?", ans.ID).Update("is_correct", ans.IsCorrect).Error
-		if err != nil {
-			tx.Rollback()
+		for _, ans := range updatedAnswers {
+			if err := tx.Model(&entity.QuizAnswer{}).Where("id = ?", ans.ID).Update("is_correct", ans.IsCorrect).Error; err != nil {
+				return err
+			}
+		}
+
+		for _, skill := range updatedSkill {
+			if err := tx.Model(&entity.SelfAssessmentSkill{}).Where("id = ?", skill.ID).Updates(map[string]interface{}{
+				"user_final_level": skill.UserFinalLevel,
+				"quiz_score":       skill.QuizScore,
+			}).Error; err != nil {
+				return err
+			}
+		}
+
+		if err := tx.Model(&entity.UserCareerSession{}).Where("id = ?", careerSessionID).Update("status", entity.StatusOnLearning).Error; err != nil {
 			return err
 		}
-	}
 
-	err = tx.Model(&entity.UserCareerSession{}).Where("id = ?", careerSessionID).Update("status", entity.StatusOnLearning).Error
-	if err != nil {
-		tx.Rollback()
-		return err
-	}
-
-	return tx.Commit().Error
+		return nil
+	})
 }
 
 func (q *quizRepository) Delete(ctx context.Context, quizSessionID string) error {
@@ -134,16 +131,11 @@ func (q *quizRepository) Delete(ctx context.Context, quizSessionID string) error
 
 }
 
-func (q *quizRepository) GetQuizSessionStatus(ctx context.Context, careerSessionID string) (*entity.QuizSession, error) {
+func (q *quizRepository) GetQuizSessionStatus(ctx context.Context, quizSessionID string) (*entity.QuizSession, error) {
 	var quizSession entity.QuizSession
-
-	err := q.db.WithContext(ctx).Where("user_career_session_id = ? AND status = ?", careerSessionID, entity.StatusOnProcess).First(&quizSession).Error
-	if err != nil {
-		if err == gorm.ErrRecordNotFound {
-			return nil, nil
-		}
-		return nil, err
-	}
-
-	return &quizSession, nil
+	err := q.db.WithContext(ctx).
+		Preload("UserCareerSession").
+		Where("id = ?", quizSessionID).
+		First(&quizSession).Error
+	return &quizSession, err
 }

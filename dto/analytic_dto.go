@@ -4,6 +4,14 @@ type CareerAnalyticResponse struct {
 	CareerSessionID string                  `json:"career_session_id"`
 	TotalScore      int                     `json:"total_score"`
 	SkillsResult    []SkillAnalyticResponse `json:"skills_result"`
+	Recommendations []SkillRecommendation   `json:"recommendations"`
+}
+type SkillRecommendation struct {
+	SkillID      string `json:"skill_id"`
+	SkillName    string `json:"skill_name"`
+	CurrentLevel string `json:"current_level"`
+	TargetLevel  string `json:"target_level"`
+	Priority     int    `json:"priority"`
 }
 
 type SkillAnalyticResponse struct {

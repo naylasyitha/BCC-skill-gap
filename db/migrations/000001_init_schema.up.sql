@@ -117,3 +117,14 @@ CREATE TABLE quiz_answers (
     CONSTRAINT fk_quiz_answers_session FOREIGN KEY (quiz_session_id) REFERENCES quiz_sessions(id) ON DELETE CASCADE,
     CONSTRAINT fk_quiz_answers_question FOREIGN KEY (question_id) REFERENCES questions(id) ON DELETE CASCADE
 );
+
+CREATE TABLE transactions (
+    id VARCHAR(50) PRIMARY KEY,
+    user_id UUID NOT NULL,
+    amount BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'pending',
+    snap_token VARCHAR(255),
+    snap_url VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);

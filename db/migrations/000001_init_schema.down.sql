@@ -1,3 +1,4 @@
+DROP TABLE IF EXISTS transactions CASCADE;
 DROP TABLE IF EXISTS quiz_answers CASCADE;
 DROP TABLE IF EXISTS learning_path_progresses CASCADE;
 DROP TABLE IF EXISTS quiz_sessions CASCADE;

@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 )
 
 var (
@@ -108,12 +109,12 @@ func (u *QuizUsecase) StartQuiz(ctx context.Context, userID string, careerSessio
 	}
 
 	quizStatus, err := u.quizRepo.GetQuizSessionStatus(ctx, sessionUUID.String())
-	if err != nil {
+	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		fmt.Println("Gagal memeriksa status sesi kuis:", err.Error())
 		return nil, ErrInternalServer
 	}
 
-	if quizStatus != nil {
+	if quizStatus != nil && quizStatus.ID != uuid.Nil {
 		err := u.quizRepo.Delete(ctx, quizStatus.ID.String())
 		if err != nil {
 			fmt.Println("Gagal mereset sesi kuis lama:", err.Error())
@@ -199,12 +200,16 @@ func (u *QuizUsecase) UpdateAnswer(ctx context.Context, quizSessionID string, re
 		return errors.New("Format Quiz Session ID tidak valid")
 	}
 
-	err = u.quizRepo.UpdateQuizAnswer(ctx, quizSessionUUID.String(), req.QuizAnswerID, req.UserAnswer)
+	session, err := u.quizRepo.GetQuizSessionStatus(ctx, quizSessionUUID.String())
 	if err != nil {
-		fmt.Println("Gagal menyimpan update jawaban kuis:", err.Error())
-		return ErrInternalServer
+		return ErrQuizSessionNotFound
 	}
-	return nil
+
+	if session.UserCareerSession.Status != entity.StatusOnQuiz || session.Status == "completed" {
+		return errors.New("Sesi kuis telah berakhir, jawaban tidak dapat diubah")
+	}
+
+	return u.quizRepo.UpdateQuizAnswer(ctx, quizSessionUUID.String(), req.QuizAnswerID, req.UserAnswer)
 }
 
 func (u *QuizUsecase) SubmitQuiz(ctx context.Context, userId string, quizSessionID string) (*dto.SubmitQuizResponse, error) {

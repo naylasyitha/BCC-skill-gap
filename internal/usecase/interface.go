@@ -60,7 +60,7 @@ type QuizRepository interface {
 	UpdateQuizAnswer(ctx context.Context, quizSessionID string, quizAnswerID string, userAnswer string) error
 	GetAnswerWithQuestions(ctx context.Context, quizSessionID string) ([]entity.QuizAnswer, error)
 	SubmitQuizTransaction(ctx context.Context, quizSessionID string, careerSessionID string, totalScore int, updatedSkill []entity.SelfAssessmentSkill, updatedAnswers []entity.QuizAnswer) error
-	GetQuizSessionStatus(ctx context.Context, careerSessionID string) (*entity.QuizSession, error)
+	GetQuizSessionStatus(ctx context.Context, quizSessionID string) (*entity.QuizSession, error)
 	Delete(ctx context.Context, quizSessionID string) error
 }
 
@@ -70,4 +70,11 @@ type QuestionRepository interface {
 	FindById(ctx context.Context, id string) (*entity.Question, error)
 	Update(ctx context.Context, question *entity.Question) error
 	Delete(ctx context.Context, id string) error
+}
+
+type PaymentRepository interface {
+	CreateTransaction(ctx context.Context, tx *entity.Transaction) error
+	GetTransactionByID(ctx context.Context, orderID string) (*entity.Transaction, error)
+	UpdateTransactionStatus(ctx context.Context, orderID string, status entity.TransactionStatus) error
+	UpgradeUserAccount(ctx context.Context, userID string) error
 }

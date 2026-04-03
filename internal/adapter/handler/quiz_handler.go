@@ -90,6 +90,15 @@ func (h *QuizHandler) UpdateAnswer(c *gin.Context) {
 
 	err := h.quizUsecase.UpdateAnswer(c.Request.Context(), quizSessionId, req)
 	if err != nil {
+		if strings.Contains(err.Error(), "berakhir") || strings.Contains(err.Error(), "tidak valid") {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"success": false,
+				"message": err.Error(),
+			})
+			return
+
+		}
+
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,
 			"message": err.Error(),

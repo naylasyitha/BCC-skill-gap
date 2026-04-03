@@ -18,6 +18,7 @@ type Router struct {
 	careerSessionHandler *handler.CareerSessionHandler
 	questionHandler      *handler.QuestionHandler
 	userHandler          *handler.UserHandler
+	paymentHandler       *handler.PaymentHandler
 	authRepo             usecase.AuthRepository
 }
 
@@ -30,6 +31,7 @@ func NewRouter(
 	cs *handler.CareerSessionHandler,
 	que *handler.QuestionHandler,
 	us *handler.UserHandler,
+	ph *handler.PaymentHandler,
 	ar usecase.AuthRepository,
 ) *Router {
 	return &Router{
@@ -41,6 +43,7 @@ func NewRouter(
 		careerSessionHandler: cs,
 		questionHandler:      que,
 		userHandler:          us,
+		paymentHandler:       ph,
 		authRepo:             ar,
 	}
 }
@@ -131,6 +134,14 @@ func (r *Router) SetupRouter() *gin.Engine {
 		careerSession.PATCH("/quiz/:quizSessionId/answer", r.quizHandler.UpdateAnswer)
 		careerSession.POST("/quiz/:quizSessionId/submit", r.quizHandler.SubmitQuiz)
 		careerSession.GET("/:careerSessionId/analytics", r.careerSessionHandler.GetDashboardAnalytics)
+
+	}
+
+	payment := api.Group("/payment")
+	{
+		payment.POST("/create", r.paymentHandler.CreatePayment)
+		payment.GET("/status/:orderId", r.paymentHandler.GetPaymentStatus)
+		payment.POST("/notification", r.paymentHandler.HandleNotification)
 
 	}
 
